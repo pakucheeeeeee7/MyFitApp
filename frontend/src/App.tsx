@@ -1,22 +1,16 @@
-// import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import viteLogo from '/vite.svg'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Routes, Route } from 'react-router-dom'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Workout from './pages/Workout'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <Card className="w-96">
-        <CardHeader>
-          <CardTitle>MyFit App</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">筋トレ管理アプリが正常に動作しています！</p>
-          <Button>Get Started</Button>
-        </CardContent>
-      </Card>
-    </div>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/workout" element={<Workout />} />
+    </Routes>
   )
 }
 
