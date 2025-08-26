@@ -33,7 +33,8 @@ MyFitApp/
 │   └── development-rules.md    # 開発ルール（このファイル）
 ├── progress/                   # 開発進捗記録
 │   ├── progress-day1.md        # Day1: フロントエンド環境構築
-│   └── progress-day2.md        # Day2: バックエンド・認証・API実装
+│   ├── progress-day2.md        # Day2: バックエンド・認証・API実装
+│   └── progress-day3.md        # 🆕 Day3: 個人化分析機能・年齢性別対応
 └── workout_app_requirements.md # 要件定義書
 ```
 
@@ -103,16 +104,21 @@ class User(Base):               # users テーブル
     email = Column(String, unique=True)
     password_hash = Column(String)  # 平文パスワード保存禁止
     created_at = Column(DateTime)
+    birth_date = Column(Date, nullable=True)      # 🆕 生年月日
+    gender = Column(String, nullable=True)        # 🆕 性別（male/female/other）
     
-# リレーション（関連性）設定
-user.workouts                   # 1人のユーザー → 複数のワークアウト
-workout.workout_exercises       # 1つのワークアウト → 複数の種目
+    # リレーション（関連性）設定
+    exercises = relationship("Exercise", back_populates="user")
+    workouts = relationship("Workout", back_populates="user")
+    body_metrics = relationship("BodyMetric", back_populates="user")
+    height_records = relationship("HeightRecord", back_populates="user")
 ```
 
 **設計思想:**
 - **正規化**: データ重複を避ける適切なテーブル分割
 - **リレーション**: `relationship()` で関連データを簡単取得
 - **制約**: `unique=True`, `nullable=False` でデータ整合性確保
+- **個人化**: 年齢・性別による科学的分析対応
 
 ### **backend/schemas.py** - API入出力型定義
 ```python
@@ -125,10 +131,37 @@ class UserResponse(BaseModel):  # レスポンス用（サーバー→クライ�
     id: int
     email: str
     created_at: datetime
+    birth_date: Optional[date] = None     # 🆕 生年月日
+    gender: Optional[str] = None          # 🆕 性別
     # password_hash は含めない（セキュリティ）
     
     class Config:
         from_attributes = True  # SQLAlchemy → Pydantic 自動変換
+
+# 🆕 個人化機能用スキーマ
+class UserProfileUpdate(BaseModel):
+    birth_date: Optional[date] = None
+    gender: Optional[str] = None          # "male", "female", "other"
+
+class UserProfileResponse(BaseModel):
+    id: int
+    email: str
+    birth_date: Optional[date]
+    gender: Optional[str]
+    age: Optional[int]                    # 計算される年齢
+    created_at: datetime
+
+# 🆕 高度な身体分析用スキーマ
+class AdvancedBodyAnalyticsSummaryResponse(BaseModel):
+    latest_weight: Optional[float]
+    latest_height: Optional[float]
+    latest_bmi: Optional[float]
+    age: Optional[int]
+    gender: Optional[str]
+    bmr: Optional[float]                  # 基礎代謝率
+    daily_calorie_needs: Optional[dict]   # 必要カロリー（活動レベル別）
+    ideal_weight_range: Optional[dict]    # 理想体重範囲
+    bmi_for_age_category: Optional[str]   # 年齢考慮BMI判定
 ```
 
 **命名ルール詳細:**
@@ -136,6 +169,7 @@ class UserResponse(BaseModel):  # レスポンス用（サーバー→クライ�
 - `{Model}Response`: 出力用データ（GET）
 - `{Model}Update`: 更新用データ（PUT）
 - `{Model}Login`: 特殊な用途（ログイン専用）
+- `Advanced{Model}`: 高度な分析機能用
 
 ### **backend/database.py** - DB接続管理
 ```python
@@ -264,6 +298,10 @@ class ExerciseCreate(ExerciseBase):  # ベースクラス継承
 @app.post("/auth/login")            # ログイン
 @app.get("/auth/me")                # 現在のユーザー情報
 
+# 🆕 ユーザープロフィール管理
+@app.get("/profile")                # プロフィール取得（年齢自動計算）
+@app.put("/profile")                # プロフィール更新（生年月日・性別）
+
 @app.get("/exercises")              # 種目一覧取得
 @app.post("/exercises")             # 種目作成
 @app.get("/exercises/{exercise_id}") # 特定種目取得
@@ -271,11 +309,27 @@ class ExerciseCreate(ExerciseBase):  # ベースクラス継承
 @app.get("/workouts")               # ワークアウト一覧
 @app.post("/workouts")              # ワークアウト作成
 @app.get("/workouts/{workout_id}")  # 特定ワークアウト取得
-
-# 今後実装予定
 @app.post("/workouts/{id}/exercises")    # ワークアウトに種目追加
 @app.post("/workout-exercises/{id}/sets") # セット記録
+
+# 身体データ管理
+@app.get("/height-records")         # 身長記録一覧
+@app.post("/height-records")        # 身長記録作成
+@app.get("/body-metrics")           # 体重記録一覧
+@app.post("/body-metrics")          # 体重記録作成
+
+# 分析機能
+@app.get("/analytics/workout/summary")       # ワークアウト分析
+@app.get("/analytics/body/summary")          # 基本身体データ分析
+@app.get("/analytics/body/advanced-summary") # 🆕 高度な身体分析（個人化）
+@app.get("/analytics/body/bmi-history")      # BMI履歴
 ```
+
+**🆕 高度分析機能の特徴:**
+- **基礎代謝率（BMR）**: Mifflin-St Jeor式
+- **必要カロリー**: 活動レベル別（5段階）
+- **理想体重範囲**: BMI基準
+- **年齢考慮BMI判定**: 高齢者対応
 
 ### 4. React コンポーネント
 ```typescript
@@ -382,12 +436,36 @@ user_exercises = db.query(Exercise).filter(
 ### 1. テーブル設計思想
 ```sql
 -- 正規化されたテーブル構造
-users              -- ユーザーアカウント
+users              -- ユーザーアカウント + プロフィール 🆕
 ├── exercises      -- 種目マスタ（内蔵 + ユーザー）
 ├── workouts       -- ワークアウト（日付単位）
 │   └── workout_exercises  -- ワークアウト内の種目
 │       └── sets   -- 各種目のセット記録
-└── body_metrics   -- 体重・体脂肪率記録
+├── body_metrics   -- 体重・体脂肪率記録
+└── height_records -- 身長記録 🆕
+```
+
+**🆕 個人化対応の拡張テーブル:**
+```sql
+-- usersテーブル（プロフィール情報追加）
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    email VARCHAR UNIQUE NOT NULL,
+    password_hash VARCHAR NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    birth_date DATE,           -- 🆕 生年月日（年齢計算用）
+    gender VARCHAR             -- 🆕 性別（BMR計算用）
+);
+
+-- height_recordsテーブル（身長履歴管理）
+CREATE TABLE height_records (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    height_cm FLOAT NOT NULL,
+    date DATETIME NOT NULL,
+    note TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
 ```
 
 ### 2. リレーション設計パターン
@@ -1178,5 +1256,108 @@ npm test                          # Jest/Vitest実行（今後実装）
 ```
 
 ---
+
+## 🧮 科学的計算機能（個人化分析）
+
+### 基礎代謝率（BMR）計算 - Mifflin-St Jeor式
+```python
+def calculate_bmr(weight_kg: float, height_cm: float, age: int, gender: str) -> float:
+    """
+    科学的根拠に基づく基礎代謝率計算
+    - 男性: BMR = 10 × 体重(kg) + 6.25 × 身長(cm) - 5 × 年齢 + 5
+    - 女性: BMR = 10 × 体重(kg) + 6.25 × 身長(cm) - 5 × 年齢 - 161
+    """
+    if gender == "male":
+        return 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+    elif gender == "female":
+        return 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+    else:
+        # その他の性別の場合は男女平均
+        male_bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+        female_bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+        return (male_bmr + female_bmr) / 2
+```
+
+### 必要カロリー計算 - Harris-Benedict式
+```python
+def calculate_daily_calories(bmr: float) -> dict:
+    """
+    活動レベル別の1日必要カロリー計算
+    """
+    return {
+        "sedentary": round(bmr * 1.2, 0),      # 座り仕事・運動なし
+        "light": round(bmr * 1.375, 0),       # 軽い運動（週1-3回）
+        "moderate": round(bmr * 1.55, 0),     # 中程度の運動（週3-5回）
+        "active": round(bmr * 1.725, 0),      # 積極的な運動（週6-7回）
+        "very_active": round(bmr * 1.9, 0)    # 非常に活発（1日2回、激しい運動）
+    }
+```
+
+### 理想体重範囲計算 - WHO基準
+```python
+def calculate_ideal_weight_range(height_cm: float) -> dict:
+    """
+    WHO推奨のBMI範囲（18.5-24.9）に基づく理想体重
+    """
+    height_m = height_cm / 100
+    return {
+        "min": round(18.5 * (height_m ** 2), 1),
+        "max": round(24.9 * (height_m ** 2), 1)
+    }
+```
+
+### 体脂肪率推定 - 性別・年齢考慮
+```python
+def estimate_body_fat(bmi: float, age: int, gender: str) -> float:
+    """
+    BMI・年齢・性別による体脂肪率推定
+    - 男性: 1.20 × BMI + 0.23 × 年齢 - 16.2
+    - 女性: 1.20 × BMI + 0.23 × 年齢 - 5.4
+    """
+    if gender == "male":
+        estimated = 1.20 * bmi + 0.23 * age - 16.2
+    elif gender == "female":
+        estimated = 1.20 * bmi + 0.23 * age - 5.4
+    else:
+        # その他の性別は男女平均
+        male_est = 1.20 * bmi + 0.23 * age - 16.2
+        female_est = 1.20 * bmi + 0.23 * age - 5.4
+        estimated = (male_est + female_est) / 2
+    
+    return max(5, min(50, round(estimated, 1)))  # 5-50%の範囲で制限
+```
+
+### 年齢考慮BMI判定
+```python
+def categorize_bmi_for_age(bmi: float, age: int) -> str:
+    """
+    年齢を考慮したBMI分類
+    高齢者（65歳以上）は基準を緩和
+    """
+    if age >= 65:
+        # 高齢者基準（少し高めが健康的）
+        if bmi < 20:
+            return "低体重（注意）"
+        elif bmi < 27:
+            return "標準"
+        else:
+            return "過体重"
+    else:
+        # 一般成人基準
+        if bmi < 18.5:
+            return "低体重"
+        elif bmi < 25:
+            return "標準"
+        elif bmi < 30:
+            return "過体重"
+        else:
+            return "肥満"
+```
+
+### 科学的根拠
+- **Mifflin-St Jeor式**: 1990年代に開発された最も精度の高い基礎代謝計算式
+- **Harris-Benedict式**: 活動代謝の標準的な計算方法
+- **WHO基準**: 世界保健機関による国際的なBMI分類
+- **年齢考慮**: 高齢者の健康維持に関する最新の医学研究を反映
 
 **このコマンド集により、効率的な開発が可能になります。必要に応じてエイリアスやスクリプト化も検討してください。**
