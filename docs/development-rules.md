@@ -50,7 +50,7 @@ pyenv local 3.11.0              # FastAPI推奨バージョン
 python -m venv myfit-backend-env # プロジェクト名含む命名
 
 # 3. 仮想環境アクティベート（開発時は常時）
-source myfit-backend-env/bin/activate
+source backend/myfit-backend-env/bin/activate
 # 成功確認：プロンプトに (myfit-backend-env) 表示
 
 # 4. 依存関係管理
