@@ -8,11 +8,23 @@ MyFitApp/
 │   ├── src/
 │   │   ├── components/ui/       # shadcn/ui コンポーネント
 │   │   ├── pages/              # ページコンポーネント
-│   │   │   ├── Login.tsx       # ログインページ
-│   │   │   ├── Dashboard.tsx   # ダッシュボード
+│   │   │   ├── Login.tsx       # 🆕 ログイン・サインアップページ
+│   │   │   ├── Dashboard.tsx   # ダッシュボード（認証後）
 │   │   │   └── Workout.tsx     # ワークアウトページ
-│   │   ├── App.tsx             # ルーティング設定
-│   │   ├── main.tsx            # React Router設定
+│   │   ├── hooks/              # 🆕 カスタムフック
+│   │   │   ├── useAuth.ts      # 認証ロジック（ログイン・サインアップ・ログアウト）
+│   │   │   └── useDashboard.ts # ダッシュボードデータ取得
+│   │   ├── stores/             # 🆕 状態管理
+│   │   │   └── authStore.ts    # Zustand認証状態管理
+│   │   ├── lib/                # 🆕 ユーティリティ
+│   │   │   ├── api.ts          # API関数・Axiosインターセプター
+│   │   │   ├── schemas.ts      # Zodバリデーションスキーマ
+│   │   │   └── utils.ts        # 共通ユーティリティ
+│   │   ├── types/              # 🆕 型定義
+│   │   │   ├── auth.ts         # 認証関連型（User, AuthResponse等）
+│   │   │   └── workout.ts      # ワークアウト関連型
+│   │   ├── App.tsx             # 🆕 認証ベースルーティング設定
+│   │   ├── main.tsx            # React Query Provider設定
 │   │   └── index.css           # Tailwind CSS設定
 │   ├── vite.config.ts          # Vite設定（path alias含む）
 │   ├── components.json         # shadcn/ui設定
@@ -34,7 +46,8 @@ MyFitApp/
 ├── progress/                   # 開発進捗記録
 │   ├── progress-day1.md        # Day1: フロントエンド環境構築
 │   ├── progress-day2.md        # Day2: バックエンド・認証・API実装
-│   └── progress-day3.md        # 🆕 Day3: 個人化分析機能・年齢性別対応
+│   ├── progress-day3.md        # Day3: 個人化分析機能・年齢性別対応
+│   └── progress-day4.md        # 🆕 Day4: フロントエンド認証機能完全実装
 └── workout_app_requirements.md # 要件定義書
 ```
 
@@ -1015,30 +1028,169 @@ workouts = db.query(Workout).options(
 ```
 
 ### 5. フロントエンド連携
+
+#### **認証システムアーキテクチャ**
 ```typescript
-// 型安全なAPI呼び出し
-interface WorkoutResponse {
-  id: number;
-  user_id: number;
-  date: string;
-  note?: string;
+// 🆕 Day 4: 完全な認証システム実装
+// Zustand状態管理
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
+  logout: () => void;
 }
 
-const createWorkout = async (data: WorkoutCreate): Promise<WorkoutResponse> => {
-  const response = await fetch('/api/workouts', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(data)
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  setUser: (user) => set({ 
+    user, 
+    isAuthenticated: !!user,
+    isLoading: false 
+  }),
+  logout: () => set({ 
+    user: null, 
+    isAuthenticated: false,
+    isLoading: false 
+  }),
+}));
+```
+
+#### **認証フックの実装**
+```typescript
+// useAuth カスタムフック
+export function useAuth() {
+  const { user, isAuthenticated, setUser, logout: logoutStore } = useAuthStore();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // 認証状態チェック（JWTトークンがある場合のみ）
+  const { data: userData, isLoading, error } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: () => authAPI.me().then(res => res.data),
+    retry: false,
+    enabled: !!localStorage.getItem('access_token'),
+    staleTime: 1000 * 60 * 5,
   });
-  
-  if (!response.ok) {
-    throw new Error('ワークアウト作成に失敗しました');
+
+  // ログイン処理
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: LoginFormData) => 
+      authAPI.login(email, password),
+    onSuccess: (response) => {
+      localStorage.setItem('access_token', response.data.access_token);
+      setUser(response.data.user);
+      navigate('/dashboard');
+    },
+  });
+
+  return {
+    user, isLoading, isAuthenticated,
+    login: loginMutation.mutateAsync,
+    signup: signupMutation.mutateAsync,
+    logout: logoutMutation.mutateAsync,
+    isLoginLoading: loginMutation.isPending,
+    loginError: loginMutation.error,
+  };
+}
+```
+
+#### **型安全なAPI呼び出し**
+```typescript
+// Axiosインターセプターで自動認証
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
+
+// 認証API関数
+export const authAPI = {
+  signup: (email: string, password: string) =>
+    api.post<AuthResponse>('/auth/signup', { email, password }),
   
-  return response.json();
+  login: (email: string, password: string) =>
+    api.post<AuthResponse>('/auth/login', { email, password }),
+  
+  logout: () => api.post('/auth/logout'),
+  
+  me: () => api.get<User>('/auth/me'),
+};
+
+// ワークアウトAPI
+const createWorkout = async (data: WorkoutCreate): Promise<WorkoutResponse> => {
+  const response = await api.post('/workouts', data); // 自動でJWTトークン付与
+  return response.data;
+};
+```
+
+#### **認証ベースルーティング**
+```typescript
+function App() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // 認証チェック中
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-lg">Loading...</div>
+    </div>;
+  }
+
+  return (
+    <Routes>
+      {!isAuthenticated ? (
+        // 未認証時はログインページのみ
+        <>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </>
+      ) : (
+        // 認証済み時は全ページアクセス可能
+        <>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/workout" element={<Workout />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        </>
+      )}
+    </Routes>
+  );
+}
+```
+
+#### **フォームバリデーション**
+```typescript
+// Zod + React Hook Form
+const loginSchema = z.object({
+  email: z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(6, 'パスワードは6文字以上である必要があります'),
+});
+
+const signupSchema = z.object({
+  email: z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(6, 'パスワードは6文字以上である必要があります'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "パスワードが一致しません",
+  path: ["confirmPassword"],
+});
+
+// ログインコンポーネント内
+const loginForm = useForm<LoginFormData>({
+  resolver: zodResolver(loginSchema),
+  defaultValues: { email: '', password: '' },
+});
+
+const handleLogin = async (data: LoginFormData) => {
+  try {
+    await login(data);
+  } catch (error) {
+    console.error('Login failed:', error);
+  }
 };
 ```
 
@@ -1158,6 +1310,27 @@ curl http://localhost:8000/health      # {"status": "healthy"}
 
 #### **認証テスト**
 ```bash
+# 🆕 フロントエンド認証フロー確認
+# 1. フロントエンドアクセス
+open http://localhost:5173            # Reactアプリ（自動的にログインページ）
+
+# 2. 新規アカウント作成テスト
+# UI: アカウント作成フォーム → メール・パスワード入力 → 作成ボタン
+# 期待結果: ダッシュボードページに自動遷移
+
+# 3. ログインテスト  
+# UI: ログインフォーム → メール・パスワード入力 → ログインボタン
+# 期待結果: ダッシュボードページに遷移
+
+# 4. 認証状態確認
+# UI: ダッシュボード右上にユーザーメール表示
+# 期待結果: ユーザー情報が正しく表示される
+
+# 5. ログアウトテスト
+# UI: ダッシュボード右上のログアウトボタン
+# 期待結果: ログインページに戻る
+
+# バックエンド直接API確認
 # サインアップ
 curl -X POST http://localhost:8000/auth/signup \
   -H "Content-Type: application/json" \
