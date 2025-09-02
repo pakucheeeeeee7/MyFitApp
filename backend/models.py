@@ -40,6 +40,8 @@ class Workout(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(DateTime(timezone=True), nullable=False)
     note = Column(Text)
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     
     # リレーション
     user = relationship("User", back_populates="workouts")

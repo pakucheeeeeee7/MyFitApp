@@ -52,6 +52,8 @@ class WorkoutResponse(BaseModel):
     user_id: int
     date: datetime
     note: Optional[str]
+    is_completed: bool
+    completed_at: Optional[datetime]
     
     class Config:
         from_attributes = True
@@ -96,6 +98,7 @@ class WorkoutExerciseResponse(BaseModel):
     exercise_id: int
     order_index: int
     exercise: ExerciseResponse  # 種目情報も含める
+    sets: list[SetResponse] = []  # セット情報も含める
     
     class Config:
         from_attributes = True

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import Date
+from sqlalchemy.sql import func
 import models
 import schemas  
 from database import engine, get_db
@@ -23,7 +24,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174"],  # 具体的なURLを指定
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 # テストエンドポイント
@@ -197,14 +198,28 @@ async def get_exercise(
 # ワークアウト関連エンドポイント
 @app.get("/workouts", response_model=list[schemas.WorkoutResponse])
 async def get_workouts(
+    from_date: str = None,
+    to_date: str = None,
+    include_completed: bool = True,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """ユーザーのワークアウト一覧を取得"""
-    workouts = db.query(models.Workout).filter(
+    query = db.query(models.Workout).filter(
         models.Workout.user_id == current_user.id
-    ).order_by(models.Workout.date.desc()).all()
+    )
     
+    # 完了状態でフィルタ
+    if not include_completed:
+        query = query.filter(models.Workout.is_completed == False)
+    
+    # 日付範囲でフィルタ
+    if from_date:
+        query = query.filter(models.Workout.date >= from_date)
+    if to_date:
+        query = query.filter(models.Workout.date <= to_date + " 23:59:59")
+    
+    workouts = query.order_by(models.Workout.date.desc()).all()
     return workouts
 
 @app.post("/workouts", response_model=schemas.WorkoutResponse)
@@ -225,13 +240,13 @@ async def create_workout(
     
     return db_workout
 
-@app.get("/workouts/{workout_id}", response_model=schemas.WorkoutResponse)
+@app.get("/workouts/{workout_id}", response_model=schemas.WorkoutDetailResponse)
 async def get_workout(
     workout_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """特定のワークアウトを取得"""
+    """特定のワークアウトを取得（種目情報含む）"""
     workout = db.query(models.Workout).filter(
         models.Workout.id == workout_id,
         models.Workout.user_id == current_user.id
@@ -1075,15 +1090,17 @@ async def get_dashboard_stats(
     days_since_monday = today.weekday()
     week_start = today - timedelta(days=days_since_monday)
     
-    # 総ワークアウト数
+    # 総ワークアウト数（完了済みのみ）
     total_workouts = db.query(models.Workout).filter(
-        models.Workout.user_id == current_user.id
+        models.Workout.user_id == current_user.id,
+        models.Workout.is_completed == True
     ).count()
     
-    # 今週のワークアウト数
+    # 今週のワークアウト数（完了済みのみ）
     this_week_workouts = db.query(models.Workout).filter(
         models.Workout.user_id == current_user.id,
-        models.Workout.date >= week_start
+        models.Workout.date >= week_start,
+        models.Workout.is_completed == True
     ).count()
     
     # 総ボリューム計算（ウォームアップ除く）
@@ -1175,6 +1192,31 @@ async def get_current_user_info(
 async def logout():
     """ログアウト（クライアント側でトークンを削除）"""
     return {"message": "ログアウトしました"}
+
+@app.patch("/workouts/{workout_id}/complete")
+async def complete_workout(
+    workout_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    workout = db.query(models.Workout).filter(
+        models.Workout.id == workout_id,
+        models.Workout.user_id == current_user.id
+    ).first()
+    
+    if not workout:
+        raise HTTPException(status_code=404, detail="ワークアウトが見つかりません")
+    
+    if workout.is_completed:
+        raise HTTPException(status_code=400, detail="既に完了済みのワークアウトです")
+    
+    # ワークアウトを完了状態に更新
+    workout.is_completed = True
+    workout.completed_at = func.now()
+    db.commit()
+    db.refresh(workout)
+    
+    return {"message": "ワークアウトが完了しました", "workout_id": workout_id}
 
 if __name__ == "__main__":
     import uvicorn

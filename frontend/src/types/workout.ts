@@ -27,7 +27,9 @@ export interface Workout {
   id: number;
   date: string;
   note?: string;
-  exercises: WorkoutExercise[];
+  is_completed: boolean;
+  completed_at?: string;
+  workout_exercises: WorkoutExercise[];
 }
 
 export interface DashboardStats {
@@ -35,4 +37,37 @@ export interface DashboardStats {
   this_week_workouts: number;
   total_volume: number;
   this_week_volume: number;
+}
+
+// API用の型定義
+export interface CreateWorkoutRequest {
+  date: string;
+  note?: string;
+}
+
+export interface CreateSetRequest {
+  weight: number;
+  reps: number;
+  rpe?: number;
+  is_warmup?: boolean;
+  note?: string;
+}
+
+export interface WorkoutFormData {
+  date: string;
+  note: string;
+}
+
+export interface SetFormData {
+  weight: string;
+  reps: string;
+  rpe: string;
+  is_warmup: boolean;
+  note: string;
+}
+
+// 1RM計算結果
+export interface OneRepMax {
+  weight: number;
+  formula: string; // "Epley", "Brzycki", etc.
 }
