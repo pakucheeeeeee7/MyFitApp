@@ -72,6 +72,12 @@ export default function Dashboard() {
                 ワークアウト開始
               </Button>
               <Button
+                onClick={() => navigate('/body-metrics')}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                体重記録
+              </Button>
+              <Button
                 onClick={() => navigate('/profile')}
                 variant="outline"
               >

@@ -51,24 +51,39 @@ export const profileSchema = z.object({
 
 // 体重記録フォームのバリデーション
 export const bodyMetricSchema = z.object({
+  date: z
+    .string()
+    .min(1, '日付を選択してください')
+    .refine((dateString) => {
+      const date = new Date(dateString);
+      const today = new Date();
+      const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+      
+      return date >= oneYearAgo && date <= tomorrow;
+    }, {
+      message: '日付は1年前から明日までの範囲で選択してください',
+    }),
   body_weight: z
-    .number({
-      message: '体重は数値で入力してください',
-    })
-    .min(20, '体重は20kg以上で入力してください')
-    .max(300, '体重は300kg以下で入力してください')
-    .optional(),
+    .union([
+      z.number().min(20, '体重は20kg以上で入力してください').max(300, '体重は300kg以下で入力してください'),
+      z.undefined()
+    ]),
   body_fat_percent: z
-    .number({
-      message: '体脂肪率は数値で入力してください',
-    })
-    .min(1, '体脂肪率は1%以上で入力してください')
-    .max(60, '体脂肪率は60%以下で入力してください')
-    .optional(),
+    .union([
+      z.number().min(1, '体脂肪率は1%以上で入力してください').max(60, '体脂肪率は60%以下で入力してください'),
+      z.undefined()
+    ]),
   note: z
     .string()
     .max(500, 'メモは500文字以内で入力してください')
     .optional(),
+}).refine((data) => {
+  // 体重または体脂肪率のどちらか一つは必須
+  return data.body_weight !== undefined || data.body_fat_percent !== undefined;
+}, {
+  message: '体重または体脂肪率のどちらか一つは入力してください',
+  path: ['body_weight'], // エラー表示位置
 });
 
 // 身長記録フォームのバリデーション
