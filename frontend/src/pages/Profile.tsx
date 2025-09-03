@@ -1,18 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { profileSchema, type ProfileFormData } from '../lib/schemas';
+import { profileSchema, heightRecordSchema, type ProfileFormData, type HeightRecordFormData } from '../lib/schemas';
 import { useProfileForm } from '../hooks/useProfile';
+import { useHeightRecords } from '../hooks/useHeightRecords';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { Loader2, User, Calendar, Users, ArrowLeft, Home } from 'lucide-react';
+import { Textarea } from '../components/ui/textarea';
+import { Loader2, User, Calendar, Users, ArrowLeft, Home, Ruler, Plus, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const [showHeightForm, setShowHeightForm] = useState(false);
+  
   const { profile, isLoading, updateProfile, isUpdating } = useProfileForm(() => {
     // プロフィール更新成功後、2秒後にダッシュボードに戻る
     setTimeout(() => {
@@ -20,11 +25,27 @@ const ProfilePage: React.FC = () => {
     }, 2000);
   });
   
+  const { heightRecords, latestHeight, createHeightRecord, isCreating } = useHeightRecords({
+    onSuccess: () => {
+      toast.success('身長を記録しました');
+      setShowHeightForm(false);
+      heightForm.reset();
+    }
+  });
+  
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       birth_date: profile?.birth_date || '',
       gender: profile?.gender || undefined,
+    },
+  });
+
+  const heightForm = useForm<HeightRecordFormData>({
+    resolver: zodResolver(heightRecordSchema),
+    defaultValues: {
+      height_cm: 0,
+      note: '',
     },
   });
 
@@ -46,6 +67,20 @@ const ProfilePage: React.FC = () => {
       });
     } catch (error) {
       console.error('Profile update error:', error);
+    }
+  };
+
+  const onHeightSubmit = async (data: HeightRecordFormData) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await createHeightRecord({
+        height_cm: data.height_cm,
+        date: today,
+        note: data.note || null,
+      });
+    } catch (error) {
+      console.error('Height record error:', error);
+      toast.error('身長の記録に失敗しました');
     }
   };
 
@@ -182,6 +217,134 @@ const ProfilePage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* 身長記録セクション */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Ruler className="h-5 w-5" />
+              身長記録
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHeightForm(!showHeightForm)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              新しい記録
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            BMI計算と高度分析に使用されます（年に数回の更新で十分です）
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* 最新の身長表示 */}
+          {latestHeight ? (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">現在の身長: {latestHeight.height_cm}cm</p>
+                  <p className="text-sm text-muted-foreground">
+                    記録日: {new Date(latestHeight.date).toLocaleDateString('ja-JP')}
+                  </p>
+                </div>
+              </div>
+              {latestHeight.note && (
+                <p className="text-sm mt-2 text-muted-foreground">
+                  メモ: {latestHeight.note}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mb-4 p-3 bg-yellow-50 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                身長が未記録です。BMI計算と高度分析のために身長を記録してください。
+              </p>
+            </div>
+          )}
+
+          {/* 身長記録フォーム */}
+          {showHeightForm && (
+            <form onSubmit={heightForm.handleSubmit(onHeightSubmit)} className="space-y-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="height_cm">身長 (cm)</Label>
+                <Input
+                  id="height_cm"
+                  type="number"
+                  step="0.1"
+                  min="50"
+                  max="250"
+                  {...heightForm.register('height_cm', { valueAsNumber: true })}
+                  placeholder="170.5"
+                />
+                {heightForm.formState.errors.height_cm && (
+                  <p className="text-sm text-red-500">
+                    {heightForm.formState.errors.height_cm.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="height_note">メモ（任意）</Label>
+                <Textarea
+                  id="height_note"
+                  {...heightForm.register('note')}
+                  placeholder="測定場所や時間など..."
+                  rows={2}
+                />
+                {heightForm.formState.errors.note && (
+                  <p className="text-sm text-red-500">
+                    {heightForm.formState.errors.note.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="submit" 
+                  disabled={isCreating}
+                  className="flex-1"
+                >
+                  {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isCreating ? '記録中...' : '身長を記録'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowHeightForm(false)}
+                  disabled={isCreating}
+                >
+                  キャンセル
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* 身長記録履歴 */}
+          {heightRecords.length > 1 && (
+            <div className="mt-4 border-t pt-4">
+              <h4 className="text-sm font-medium mb-2">記録履歴</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {heightRecords.slice(1).map((record) => (
+                  <div key={record.id} className="text-sm p-2 bg-gray-50 rounded">
+                    <div className="flex justify-between">
+                      <span>{record.height_cm}cm</span>
+                      <span className="text-muted-foreground">
+                        {new Date(record.date).toLocaleDateString('ja-JP')}
+                      </span>
+                    </div>
+                    {record.note && (
+                      <p className="text-muted-foreground mt-1">{record.note}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 現在の設定表示 */}
       {profile && (
         <Card>
@@ -210,6 +373,29 @@ const ProfilePage: React.FC = () => {
               <span className="text-muted-foreground">登録日:</span>
               <span>{new Date(profile.created_at).toLocaleDateString('ja-JP')}</span>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 高度分析への案内 */}
+      {profile && latestHeight && (
+        <Card className="bg-gradient-to-r from-purple-50 to-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              科学的身体分析を見る
+            </CardTitle>
+            <CardDescription>
+              プロフィール情報と身長記録を使用して、BMI・基礎代謝率・理想体重などの詳細分析を表示します
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => navigate('/analytics')}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+            >
+              高度分析ダッシュボードを見る
+            </Button>
           </CardContent>
         </Card>
       )}

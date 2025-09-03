@@ -78,6 +78,12 @@ export default function Dashboard() {
                 体重記録
               </Button>
               <Button
+                onClick={() => navigate('/analytics')}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                高度分析
+              </Button>
+              <Button
                 onClick={() => navigate('/profile')}
                 variant="outline"
               >

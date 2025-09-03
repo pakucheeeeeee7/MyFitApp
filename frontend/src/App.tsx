@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Workout from './pages/Workout'
 import Profile from './pages/Profile'
 import BodyMetrics from './pages/BodyMetrics'
+import AdvancedAnalytics from './pages/AdvancedAnalytics'
 import { Toaster } from 'sonner'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
             <Route path="/workout" element={<Workout />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/body-metrics" element={<BodyMetrics />} />
+            <Route path="/analytics" element={<AdvancedAnalytics />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           </>
