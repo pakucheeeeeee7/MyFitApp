@@ -3,6 +3,8 @@ import { useAuth } from './hooks/useAuth'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Workout from './pages/Workout'
+import Profile from './pages/Profile'
+import { Toaster } from 'sonner'
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -17,23 +19,27 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* 未認証時はログインページのみアクセス可能 */}
-      {!isAuthenticated ? (
-        <>
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </>
-      ) : (
-        /* 認証済み時は全てのページにアクセス可能 */
-        <>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        </>
-      )}
-    </Routes>
+    <>
+      <Routes>
+        {/* 未認証時はログインページのみアクセス可能 */}
+        {!isAuthenticated ? (
+          <>
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        ) : (
+          /* 認証済み時は全てのページにアクセス可能 */
+          <>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/workout" element={<Workout />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          </>
+        )}
+      </Routes>
+      <Toaster />
+    </>
   )
 }
 

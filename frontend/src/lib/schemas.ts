@@ -28,5 +28,65 @@ export const signupSchema = z.object({
   path: ['confirmPassword'],
 });
 
+// プロフィール更新フォームのバリデーション
+export const profileSchema = z.object({
+  birth_date: z
+    .string()
+    .optional()
+    .refine((date) => {
+      if (!date) return true; // 空の場合はOK
+      const birthDate = new Date(date);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      return age >= 5 && age <= 120;
+    }, {
+      message: '年齢は5歳から120歳の間で入力してください',
+    }),
+  gender: z
+    .enum(['male', 'female', 'other'], {
+      message: '性別を選択してください',
+    })
+    .optional(),
+});
+
+// 体重記録フォームのバリデーション
+export const bodyMetricSchema = z.object({
+  body_weight: z
+    .number({
+      message: '体重は数値で入力してください',
+    })
+    .min(20, '体重は20kg以上で入力してください')
+    .max(300, '体重は300kg以下で入力してください')
+    .optional(),
+  body_fat_percent: z
+    .number({
+      message: '体脂肪率は数値で入力してください',
+    })
+    .min(1, '体脂肪率は1%以上で入力してください')
+    .max(60, '体脂肪率は60%以下で入力してください')
+    .optional(),
+  note: z
+    .string()
+    .max(500, 'メモは500文字以内で入力してください')
+    .optional(),
+});
+
+// 身長記録フォームのバリデーション
+export const heightRecordSchema = z.object({
+  height_cm: z
+    .number({
+      message: '身長は数値で入力してください',
+    })
+    .min(50, '身長は50cm以上で入力してください')
+    .max(250, '身長は250cm以下で入力してください'),
+  note: z
+    .string()
+    .max(500, 'メモは500文字以内で入力してください')
+    .optional(),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
+export type ProfileFormData = z.infer<typeof profileSchema>;
+export type BodyMetricFormData = z.infer<typeof bodyMetricSchema>;
+export type HeightRecordFormData = z.infer<typeof heightRecordSchema>;

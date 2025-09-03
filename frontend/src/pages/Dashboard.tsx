@@ -72,6 +72,12 @@ export default function Dashboard() {
                 ワークアウト開始
               </Button>
               <Button
+                onClick={() => navigate('/profile')}
+                variant="outline"
+              >
+                プロフィール設定
+              </Button>
+              <Button
                 onClick={handleLogout}
                 variant="outline"
               >

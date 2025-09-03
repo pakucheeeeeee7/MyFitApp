@@ -1,6 +1,15 @@
 import axios from 'axios';
 import type { User, AuthResponse } from '../types/auth';
 import type { Workout, DashboardStats, Exercise } from '../types/workout';
+import type { 
+  UserProfile, 
+  ProfileUpdateRequest, 
+  BodyMetric, 
+  BodyMetricCreateRequest,
+  HeightRecord,
+  HeightRecordCreateRequest,
+  AdvancedAnalytics 
+} from '../types/profile';
 
 export const api = axios.create({
   baseURL: 'http://localhost:8000',
@@ -105,4 +114,40 @@ export const workoutDetailAPI = {
   
   completeWorkout: (workoutId: number) =>
     api.patch<{ message: string; workout_id: number }>(`/workouts/${workoutId}/complete`),
+};
+
+// プロフィール管理API
+export const profileAPI = {
+  getProfile: () =>
+    api.get<UserProfile>('/profile'),
+  
+  updateProfile: (profileData: ProfileUpdateRequest) =>
+    api.put<UserProfile>('/profile', profileData),
+};
+
+// 体重管理API
+export const bodyMetricsAPI = {
+  getBodyMetrics: () =>
+    api.get<BodyMetric[]>('/body-metrics'),
+  
+  createBodyMetric: (data: BodyMetricCreateRequest) =>
+    api.post<BodyMetric>('/body-metrics', data),
+  
+  updateBodyMetric: (metricId: number, data: Partial<BodyMetricCreateRequest>) =>
+    api.put<BodyMetric>(`/body-metrics/${metricId}`, data),
+};
+
+// 身長管理API
+export const heightRecordsAPI = {
+  getHeightRecords: () =>
+    api.get<HeightRecord[]>('/height-records'),
+  
+  createHeightRecord: (data: HeightRecordCreateRequest) =>
+    api.post<HeightRecord>('/height-records', data),
+};
+
+// 高度分析API
+export const advancedAnalyticsAPI = {
+  getAdvancedSummary: () =>
+    api.get<AdvancedAnalytics>('/analytics/body/advanced-summary'),
 };
