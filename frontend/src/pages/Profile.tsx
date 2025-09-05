@@ -12,7 +12,6 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Textarea } from '../components/ui/textarea';
 import { Loader2, User, Calendar, Users, ArrowLeft, Home, Ruler, Plus, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +26,6 @@ const ProfilePage: React.FC = () => {
   
   const { heightRecords, latestHeight, createHeightRecord, isCreating } = useHeightRecords({
     onSuccess: () => {
-      toast.success('身長を記録しました');
       setShowHeightForm(false);
       heightForm.reset();
     }
@@ -66,7 +64,7 @@ const ProfilePage: React.FC = () => {
         gender: data.gender || null,
       });
     } catch (error) {
-      console.error('Profile update error:', error);
+      // エラーはtoastで表示される
     }
   };
 
@@ -79,8 +77,7 @@ const ProfilePage: React.FC = () => {
         note: data.note || null,
       });
     } catch (error) {
-      console.error('Height record error:', error);
-      toast.error('身長の記録に失敗しました');
+      // エラーはtoastで表示される
     }
   };
 

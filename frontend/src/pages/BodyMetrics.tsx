@@ -60,7 +60,7 @@ const BodyMetricsPage: React.FC = () => {
       });
       setShowForm(false);
     } catch (error) {
-      console.error('Body metric creation error:', error);
+      // エラーはtoastで表示される
     }
   };
 

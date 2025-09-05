@@ -30,49 +30,33 @@ export function useAuth() {
     }
   }, [userData, error, setUser]);
 
-  // ログイン（デバッグ付き）
+  // ログイン
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: LoginFormData) => {
-      console.log('🚀 Login attempt:', { email });
       return authAPI.login(email, password);
     },
     onSuccess: (response) => {
-      console.log('✅ Login successful:', response.data);
-      
       // JWTトークンをlocalStorageに保存
       localStorage.setItem('access_token', response.data.access_token);
       
       setUser(response.data.user);
-      console.log('🔄 User set, navigating to dashboard...');
       queryClient.invalidateQueries({ queryKey: ['auth'] });
       navigate('/dashboard');
-      console.log('🎯 Navigation called');
-    },
-    onError: (error) => {
-      console.error('❌ Login failed:', error);
     },
   });
 
-  // サインアップ（デバッグ付き）
+  // サインアップ
   const signupMutation = useMutation({
     mutationFn: ({ email, password }: SignupFormData) => {
-      console.log('🚀 Signup attempt:', { email });
       return authAPI.signup(email, password);
     },
     onSuccess: (response) => {
-      console.log('✅ Signup successful:', response.data);
-      
       // JWTトークンをlocalStorageに保存
       localStorage.setItem('access_token', response.data.access_token);
       
       setUser(response.data.user);
-      console.log('🔄 User set, navigating to dashboard...');
       queryClient.invalidateQueries({ queryKey: ['auth'] });
       navigate('/dashboard');
-      console.log('🎯 Navigation called');
-    },
-    onError: (error) => {
-      console.error('❌ Signup failed:', error);
     },
   });
 

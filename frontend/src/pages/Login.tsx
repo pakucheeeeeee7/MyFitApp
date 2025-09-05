@@ -33,20 +33,12 @@ export default function Login() {
 
   // ログイン処理
   const handleLogin = async (data: LoginFormData) => {
-    try {
-      await login(data)
-    } catch (error) {
-      console.error('Login failed:', error)
-    }
+    await login(data)
   }
 
   // サインアップ処理
   const handleSignup = async (data: SignupFormData) => {
-    try {
-      await signup({ email: data.email, password: data.password })
-    } catch (error) {
-      console.error('Signup failed:', error)
-    }
+    await signup(data)
   }
 
   // エラーメッセージの表示

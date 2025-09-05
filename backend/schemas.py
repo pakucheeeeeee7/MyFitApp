@@ -51,12 +51,16 @@ class WorkoutResponse(BaseModel):
     id: int
     user_id: int
     date: datetime
-    note: Optional[str]
+    note: Optional[str] = None
     is_completed: bool
-    completed_at: Optional[datetime]
+    completed_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
+        # 日時フィールドの処理を改善
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 # セット関連スキーマ
 class SetCreate(BaseModel):

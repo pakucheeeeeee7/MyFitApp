@@ -27,9 +27,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-# テストエンドポイント
+
+# ヘルスチェックエンドポイント
 @app.get("/test")
-async def test_endpoint():
+async def health_check():
+    """APIサーバーの稼働状況を確認"""
     return {"message": "Backend connection successful!", "status": "OK"}
 
 # JWT認証スキーム
@@ -239,6 +241,34 @@ async def create_workout(
     db.refresh(db_workout)
     
     return db_workout
+
+# 最近のワークアウト取得エンドポイント（{workout_id}の前に配置）
+@app.get("/workouts/recent", response_model=list[schemas.WorkoutDetailResponse])
+async def get_recent_workouts(
+    limit: int = 5,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """最近のワークアウトを取得（種目情報含む）"""
+    try:
+        from sqlalchemy.orm import joinedload
+        
+        # 完了済みのワークアウトのみを取得（workout_exercisesもjoinedloadで取得）
+        workouts = db.query(models.Workout).options(
+            joinedload(models.Workout.workout_exercises).joinedload(models.WorkoutExercise.exercise),
+            joinedload(models.Workout.workout_exercises).joinedload(models.WorkoutExercise.sets)
+        ).filter(
+            models.Workout.user_id == current_user.id,
+            models.Workout.is_completed == True
+        ).order_by(models.Workout.date.desc()).limit(limit).all()
+        
+        return workouts
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="最近のワークアウト取得に失敗しました"
+        )
 
 @app.get("/workouts/{workout_id}", response_model=schemas.WorkoutDetailResponse)
 async def get_workout(
@@ -1128,53 +1158,9 @@ async def get_dashboard_stats(
     }
 
 # filepath: [main.py](http://_vscodecontentref_/1)
-# 既存の /workouts/recent エンドポイントを以下で完全に置き換え
 
-@app.get("/workouts/recent")
-async def get_recent_workouts(
-    limit: int = 5,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """最近のワークアウトを取得"""
-    try:
-        # ワークアウトテーブルが存在するかチェック
-        workouts = db.query(models.Workout).filter(
-            models.Workout.user_id == current_user.id
-        ).order_by(models.Workout.date.desc()).limit(limit).all()
-        
-        print(f"Found {len(workouts)} workouts for user {current_user.id}")
-        
-        # 空のリストを返す（ワークアウトが0件の場合）
-        return []
-        
-    except Exception as e:
-        print(f"Error in get_recent_workouts: {str(e)}")
-        # エラーが発生した場合でも空のリストを返す
-        return []
 
-# デバッグ用のシンプルなエンドポイントを追加
-
-# @app.get("/workouts/recent/debug")
-# async def debug_recent_workouts(
-#     current_user: models.User = Depends(get_current_user),
-#     db: Session = Depends(get_db)
-# ):
-#     """デバッグ用：ユーザー情報とワークアウト数を確認"""
-#     try:
-#         workout_count = db.query(models.Workout).filter(
-#             models.Workout.user_id == current_user.id
-#         ).count()
-        
-#         return {
-#             "user_id": current_user.id,
-#             "user_email": current_user.email,
-#             "workout_count": workout_count,
-#             "message": "Debug endpoint working"
-#         }
-#     except Exception as e:
-#         return {"error": str(e)}
-
+# /auth/me エンドポイントを追加
 
 # /auth/me エンドポイントを追加
 @app.get("/auth/me")

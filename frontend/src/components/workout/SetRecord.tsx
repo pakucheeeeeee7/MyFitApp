@@ -46,7 +46,7 @@ export function SetRecord({ workoutExerciseId, setIndex, onSuccess }: SetRecordP
       setShowForm(false);
       onSuccess?.();
     } catch (error) {
-      console.error('セット追加エラー:', error);
+      // エラーは上位コンポーネントで処理される
     }
   };
 

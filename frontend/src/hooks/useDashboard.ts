@@ -13,7 +13,7 @@ export function useDashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // 最近のワークアウトを取得（一時的に無効化してエラーを回避）
+  // 最近のワークアウトを取得
   const {
     data: recentWorkouts,
     isLoading: isWorkoutsLoading,
@@ -22,13 +22,12 @@ export function useDashboard() {
     queryKey: ['dashboard', 'recent-workouts'],
     queryFn: () => dashboardAPI.getRecentWorkouts(5).then(res => res.data),
     staleTime: 1000 * 60 * 2,
-    enabled: false, // 一時的に無効化
   });
 
   return {
     stats,
-    recentWorkouts: [], // 空のリストを返す
-    isLoading: isStatsLoading, // workoutsLoadingを除外
-    error: statsError, // workoutsErrorを除外
+    recentWorkouts: recentWorkouts || [],
+    isLoading: isStatsLoading || isWorkoutsLoading,
+    error: statsError || workoutsError,
   };
 }

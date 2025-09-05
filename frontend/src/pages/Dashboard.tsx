@@ -10,11 +10,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    await logout();
   };
 
   const formatDate = (dateString: string) => {
@@ -171,7 +167,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium">{formatDate(workout.date)}</p>
                       <p className="text-sm text-gray-600">
-                        {workout.exercises.length}種目
+                        {workout.workout_exercises?.length || 0}種目
                       </p>
                       {workout.note && (
                         <p className="text-sm text-gray-500 mt-1">

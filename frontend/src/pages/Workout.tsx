@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { useWorkout } from '@/hooks/useWorkout';
-import { ExerciseSelector } from '@/components/workout/ExerciseSelector';
-import { WorkoutExerciseCard } from '@/components/workout/WorkoutExerciseCard';
+import { useWorkout } from '../hooks/useWorkout';
+import { ExerciseSelector } from '../components/workout/ExerciseSelector';
+import { WorkoutExerciseCard } from '../components/workout/WorkoutExerciseCard';
 import type { Exercise, WorkoutExercise } from '../types/workout';
 
 export default function Workout() {
@@ -53,7 +53,7 @@ export default function Workout() {
       // 成功時はダッシュボードにナビゲート
       navigate('/dashboard');
     } catch (error) {
-      console.error('ワークアウト完了エラー:', error);
+      // エラーはtoastで表示される
     }
   };
 
