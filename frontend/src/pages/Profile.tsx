@@ -17,12 +17,7 @@ const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [showHeightForm, setShowHeightForm] = useState(false);
   
-  const { profile, isLoading, updateProfile, isUpdating } = useProfileForm(() => {
-    // プロフィール更新成功後、2秒後にダッシュボードに戻る
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 2000);
-  });
+  const { profile, isLoading, updateProfile, isUpdating } = useProfileForm();
   
   const { heightRecords, latestHeight, createHeightRecord, isCreating } = useHeightRecords({
     onSuccess: () => {

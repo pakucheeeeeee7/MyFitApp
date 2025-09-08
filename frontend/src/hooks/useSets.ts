@@ -12,7 +12,13 @@ export function useSets() {
       setData: CreateSetRequest;
     }) => workoutDetailAPI.addSetToExercise(workoutExerciseId, setData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workout', 'today'] });
+      // より積極的なクエリ更新でリアルタイム表示を確保
+      queryClient.invalidateQueries({ queryKey: ['workout'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // データを強制的に再取得
+      const today = new Date().toISOString().split('T')[0];
+      queryClient.refetchQueries({ queryKey: ['workout', 'date', today] });
     },
   });
 
@@ -20,7 +26,13 @@ export function useSets() {
   const deleteSetMutation = useMutation({
     mutationFn: (setId: number) => workoutDetailAPI.deleteSet(setId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workout', 'today'] });
+      // より積極的なクエリ更新でリアルタイム表示を確保
+      queryClient.invalidateQueries({ queryKey: ['workout'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // データを強制的に再取得
+      const today = new Date().toISOString().split('T')[0];
+      queryClient.refetchQueries({ queryKey: ['workout', 'date', today] });
     },
   });
 

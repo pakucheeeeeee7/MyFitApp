@@ -5,6 +5,7 @@ import type { Exercise } from '../types/workout';
 interface CreateExerciseRequest {
   name: string;
   muscle_group: string;
+  exercise_type: 'strength' | 'cardio';
 }
 
 export function useExercises() {
@@ -18,7 +19,7 @@ export function useExercises() {
 
   const createMutation = useMutation({
     mutationFn: (exerciseData: CreateExerciseRequest) => 
-      exerciseAPI.createExercise(exerciseData.name, exerciseData.muscle_group).then((res: any) => res.data),
+      exerciseAPI.createExercise(exerciseData.name, exerciseData.muscle_group, exerciseData.exercise_type).then((res: any) => res.data),
     onSuccess: () => {
       // 種目リストを再取得
       queryClient.invalidateQueries({ queryKey: ['exercises'] });

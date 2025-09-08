@@ -76,8 +76,8 @@ export const exerciseAPI = {
   getExercises: () =>
     api.get<Exercise[]>('/exercises'),
   
-  createExercise: (name: string, muscle_group: string) =>
-    api.post<Exercise>('/exercises', { name, muscle_group }),
+  createExercise: (name: string, muscle_group: string, exercise_type: 'strength' | 'cardio' = 'strength') =>
+    api.post<Exercise>('/exercises', { name, muscle_group, exercise_type }),
 };
 
 // ワークアウト詳細API

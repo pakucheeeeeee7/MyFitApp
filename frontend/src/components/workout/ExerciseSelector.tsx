@@ -18,6 +18,7 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
   const [showAddForm, setShowAddForm] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState('');
   const [newExerciseMuscleGroup, setNewExerciseMuscleGroup] = useState('');
+  const [newExerciseType, setNewExerciseType] = useState<'strength' | 'cardio'>('strength');
   
   const { exercises, exercisesByMuscleGroup, isLoading, createExercise, isCreating } = useExercises();
 
@@ -26,10 +27,12 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
       try {
         await createExercise({
           name: newExerciseName.trim(),
-          muscle_group: newExerciseMuscleGroup.trim()
+          muscle_group: newExerciseMuscleGroup.trim(),
+          exercise_type: newExerciseType
         });
         setNewExerciseName('');
         setNewExerciseMuscleGroup('');
+        setNewExerciseType('strength');
         setShowAddForm(false);
       } catch (error) {
         console.error('種目の追加に失敗しました:', error);
@@ -37,7 +40,7 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
     }
   };
 
-  const muscleGroups = ['胸', '背中', '脚', '肩', '腕', '腹', 'その他'];
+  const muscleGroups = ['胸', '背中', '脚', '肩', '腕', '腹', '有酸素運動', 'その他'];
 
   if (!isOpen) return null;
 
@@ -92,13 +95,33 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
                     <select
                       id="muscle-group"
                       value={newExerciseMuscleGroup}
-                      onChange={(e) => setNewExerciseMuscleGroup(e.target.value)}
+                      onChange={(e) => {
+                        setNewExerciseMuscleGroup(e.target.value);
+                        // 有酸素運動が選択された場合は自動でcardioに設定
+                        if (e.target.value === '有酸素運動') {
+                          setNewExerciseType('cardio');
+                        } else {
+                          setNewExerciseType('strength');
+                        }
+                      }}
                       className="w-full p-2 border border-gray-300 rounded-md"
                     >
                       <option value="">筋肉群を選択</option>
                       {muscleGroups.map(group => (
                         <option key={group} value={group}>{group}</option>
                       ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="exercise-type">種目タイプ</Label>
+                    <select
+                      id="exercise-type"
+                      value={newExerciseType}
+                      onChange={(e) => setNewExerciseType(e.target.value as 'strength' | 'cardio')}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="strength">筋力トレーニング</option>
+                      <option value="cardio">有酸素運動</option>
                     </select>
                   </div>
                   <div className="flex gap-2">
@@ -115,6 +138,7 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
                         setShowAddForm(false);
                         setNewExerciseName('');
                         setNewExerciseMuscleGroup('');
+                        setNewExerciseType('strength');
                       }}
                     >
                       キャンセル
@@ -156,15 +180,22 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
                             }}
                           >
                             {exercise.name}
-                            {exercise.is_builtin ? (
-                              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                内蔵
-                              </span>
-                            ) : (
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                オリジナル
-                              </span>
-                            )}
+                            <div className="ml-auto flex gap-1">
+                              {exercise.exercise_type === 'cardio' && (
+                                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                                  有酸素
+                                </span>
+                              )}
+                              {exercise.is_builtin ? (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  内蔵
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                  オリジナル
+                                </span>
+                              )}
+                            </div>
                           </Button>
                         ))}
                       </div>

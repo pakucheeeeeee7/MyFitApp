@@ -1,6 +1,7 @@
 import { useAuth } from '../hooks/useAuth';
 import { useDashboard } from '../hooks/useDashboard';
 import { useViewMode } from '../hooks/useViewMode';
+import { useProfile } from '../hooks/useProfile';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { WorkoutCalendar } from '../components/workout/WorkoutCalendar';
@@ -8,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { data: profile } = useProfile();
   const [viewMode, setViewMode] = useViewMode('dashboard-workout-view', 'list');
   
   // 現在の月を取得（カレンダー表示用）
@@ -30,6 +32,9 @@ export default function Dashboard() {
     });
   };
 
+  // ユーザーネームまたはメールアドレスを表示用に取得
+  const displayName = profile?.username || user?.email || 'ユーザー';
+
   // ダッシュボードのデータ読み込み中（認証は完了済み）
   if (isLoading) {
     return (
@@ -39,7 +44,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">MyFit</h1>
-                <p className="text-sm text-gray-600">おかえりなさい、{user?.email}</p>
+                <p className="text-sm text-gray-600">おかえりなさい、{displayName}さん</p>
               </div>
               <Button
                 onClick={handleLogout}
@@ -67,7 +72,7 @@ export default function Dashboard() {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">MyFit</h1>
-              <p className="text-sm text-gray-600">おかえりなさい、{user?.email}</p>
+              <p className="text-sm text-gray-600">おかえりなさい、{displayName}さん</p>
             </div>
             <div className="flex space-x-4">
               <Button

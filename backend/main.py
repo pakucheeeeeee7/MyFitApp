@@ -163,6 +163,7 @@ async def create_exercise(
     db_exercise = models.Exercise(
         name=exercise_data.name,
         muscle_group=exercise_data.muscle_group,
+        exercise_type=exercise_data.exercise_type,
         user_id=current_user.id,
         is_builtin=False
     )
@@ -394,9 +395,16 @@ async def add_set(
     db_set = models.Set(
         workout_exercise_id=workout_exercise_id,
         set_index=current_set_count + 1,
+        # 筋力トレーニング用フィールド
         weight=set_data.weight,
         reps=set_data.reps,
         rpe=set_data.rpe,
+        # 有酸素運動用フィールド
+        duration_seconds=set_data.duration_seconds,
+        distance_km=set_data.distance_km,
+        incline_percent=set_data.incline_percent,
+        avg_heart_rate=set_data.avg_heart_rate,
+        # 共通フィールド
         is_warmup=set_data.is_warmup,
         note=set_data.note
     )
@@ -449,25 +457,29 @@ async def get_exercise_1rm_history(
     if not exercise.is_builtin and exercise.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="この種目にはアクセスできません")
     
-    # その種目のセットデータを取得（ウォームアップ除く）
-    sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
+    # その種目のセットデータを取得（ウォームアップ除く、筋力トレーニングのみ）
+    sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).join(models.Exercise).filter(
         models.WorkoutExercise.exercise_id == exercise_id,
         models.Workout.user_id == current_user.id,
-        models.Set.is_warmup == False
+        models.Set.is_warmup == False,
+        models.Exercise.exercise_type == 'strength',  # 筋力トレーニングのみ
+        models.Set.weight.isnot(None),
+        models.Set.reps.isnot(None)
     ).order_by(models.Workout.date.desc()).all()
     
     # 推定1RM計算（Epley公式: 1RM = weight * (1 + reps/30)）
     rm_history = []
     for set_data in sets:
-        estimated_1rm = set_data.weight * (1 + set_data.reps / 30)
-        rm_history.append({
-            "date": set_data.workout_exercise.workout.date,
-            "weight": set_data.weight,
-            "reps": set_data.reps,
-            "estimated_1rm": round(estimated_1rm, 1),
-            "rpe": set_data.rpe,
-            "workout_id": set_data.workout_exercise.workout_id
-        })
+        if set_data.weight and set_data.reps:  # Null チェック
+            estimated_1rm = set_data.weight * (1 + set_data.reps / 30)
+            rm_history.append({
+                "date": set_data.workout_exercise.workout.date,
+                "weight": set_data.weight,
+                "reps": set_data.reps,
+                "estimated_1rm": round(estimated_1rm, 1),
+                "rpe": set_data.rpe,
+                "workout_id": set_data.workout_exercise.workout_id
+            })
     
     return {
         "exercise_name": exercise.name,
@@ -492,10 +504,14 @@ async def get_workout_volume(
     if not workout:
         raise HTTPException(status_code=404, detail="ワークアウトが見つかりません")
     
-    # ワークアウトの全セットを取得
+    # ワークアウトの全セット（筋力トレーニングのみ）を取得
     sets = db.query(models.Set).join(models.WorkoutExercise).filter(
         models.WorkoutExercise.workout_id == workout_id,
         models.Set.is_warmup == False  # ウォームアップは除く
+    ).join(models.Exercise, models.WorkoutExercise.exercise_id == models.Exercise.id).filter(
+        models.Exercise.exercise_type == 'strength',  # 筋力トレーニングのみ
+        models.Set.weight.isnot(None),
+        models.Set.reps.isnot(None)
     ).all()
     
     # 種目別ボリューム計算
@@ -504,31 +520,33 @@ async def get_workout_volume(
     total_sets = 0
     
     for set_data in sets:
-        exercise_name = set_data.workout_exercise.exercise.name
-        volume = set_data.weight * set_data.reps
-        
-        if exercise_name not in exercise_volumes:
-            exercise_volumes[exercise_name] = {
-                "exercise_name": exercise_name,
-                "muscle_group": set_data.workout_exercise.exercise.muscle_group,
-                "sets": 0,
-                "total_volume": 0,
-                "avg_weight": 0,
-                "total_reps": 0
-            }
-        
-        exercise_volumes[exercise_name]["sets"] += 1
-        exercise_volumes[exercise_name]["total_volume"] += volume
-        exercise_volumes[exercise_name]["total_reps"] += set_data.reps
-        
-        total_volume += volume
-        total_sets += 1
+        if set_data.weight and set_data.reps:  # Null チェック
+            exercise_name = set_data.workout_exercise.exercise.name
+            volume = set_data.weight * set_data.reps
+            
+            if exercise_name not in exercise_volumes:
+                exercise_volumes[exercise_name] = {
+                    "exercise_name": exercise_name,
+                    "muscle_group": set_data.workout_exercise.exercise.muscle_group,
+                    "sets": 0,
+                    "total_volume": 0,
+                    "avg_weight": 0,
+                    "total_reps": 0
+                }
+            
+            exercise_volumes[exercise_name]["sets"] += 1
+            exercise_volumes[exercise_name]["total_volume"] += volume
+            exercise_volumes[exercise_name]["total_reps"] += set_data.reps
+            
+            total_volume += volume
+            total_sets += 1
     
-    # 平均重量計算
+    # 平均重量計算（筋力トレーニングのみ）
     for exercise_name in exercise_volumes:
+        exercise_sets = [s for s in sets if s.workout_exercise.exercise.name == exercise_name]
         total_weight = sum(
-            set_data.weight for set_data in sets 
-            if set_data.workout_exercise.exercise.name == exercise_name
+            set_data.weight for set_data in exercise_sets 
+            if set_data.weight is not None
         )
         exercise_volumes[exercise_name]["avg_weight"] = round(
             total_weight / exercise_volumes[exercise_name]["sets"], 1
@@ -552,19 +570,25 @@ async def get_user_analytics_summary(
         models.Workout.user_id == current_user.id
     ).count()
     
-    # 総セット数（ウォームアップ除く）
+    # 総セット数（ウォームアップ除く、筋力トレーニングのみ）
     total_sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
         models.Workout.user_id == current_user.id,
         models.Set.is_warmup == False
+    ).join(models.Exercise, models.WorkoutExercise.exercise_id == models.Exercise.id).filter(
+        models.Exercise.exercise_type == 'strength'
     ).count()
     
-    # 総ボリューム
+    # 総ボリューム（筋力トレーニングのみ）
     sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
         models.Workout.user_id == current_user.id,
         models.Set.is_warmup == False
+    ).join(models.Exercise, models.WorkoutExercise.exercise_id == models.Exercise.id).filter(
+        models.Exercise.exercise_type == 'strength',
+        models.Set.weight.isnot(None),
+        models.Set.reps.isnot(None)
     ).all()
     
-    total_volume = sum(set_data.weight * set_data.reps for set_data in sets)
+    total_volume = sum(set_data.weight * set_data.reps for set_data in sets if set_data.weight and set_data.reps)
     
     # 最新ワークアウト
     latest_workout = db.query(models.Workout).filter(
@@ -1161,22 +1185,30 @@ async def get_dashboard_stats(
         models.Workout.is_completed == True
     ).count()
     
-    # 総ボリューム計算（ウォームアップ除く）
+    # 総ボリューム計算（ウォームアップ除く、筋力トレーニングのみ）
     total_sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
         models.Workout.user_id == current_user.id,
         models.Set.is_warmup == False
+    ).join(models.Exercise, models.WorkoutExercise.exercise_id == models.Exercise.id).filter(
+        models.Exercise.exercise_type == 'strength',  # 筋力トレーニングのみ
+        models.Set.weight.isnot(None),  # weightがNullでない
+        models.Set.reps.isnot(None)     # repsがNullでない
     ).all()
     
-    total_volume = sum(set_data.weight * set_data.reps for set_data in total_sets)
+    total_volume = sum(set_data.weight * set_data.reps for set_data in total_sets if set_data.weight and set_data.reps)
     
-    # 今週のボリューム計算
+    # 今週のボリューム計算（筋力トレーニングのみ）
     this_week_sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
         models.Workout.user_id == current_user.id,
         models.Workout.date >= week_start,
         models.Set.is_warmup == False
+    ).join(models.Exercise, models.WorkoutExercise.exercise_id == models.Exercise.id).filter(
+        models.Exercise.exercise_type == 'strength',  # 筋力トレーニングのみ
+        models.Set.weight.isnot(None),  # weightがNullでない
+        models.Set.reps.isnot(None)     # repsがNullでない
     ).all()
     
-    this_week_volume = sum(set_data.weight * set_data.reps for set_data in this_week_sets)
+    this_week_volume = sum(set_data.weight * set_data.reps for set_data in this_week_sets if set_data.weight and set_data.reps)
     
     return {
         "total_workouts": total_workouts,

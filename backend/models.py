@@ -28,6 +28,7 @@ class Exercise(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Noneの場合は内蔵種目
     name = Column(String, nullable=False)
     muscle_group = Column(String, nullable=False)
+    exercise_type = Column(String, nullable=False, default="strength")  # "strength" or "cardio"
     is_builtin = Column(Boolean, default=False)
     
     # リレーション
@@ -67,9 +68,19 @@ class Set(Base):
     id = Column(Integer, primary_key=True, index=True)
     workout_exercise_id = Column(Integer, ForeignKey("workout_exercises.id"), nullable=False)
     set_index = Column(Integer, nullable=False)
-    weight = Column(Float, nullable=False)
-    reps = Column(Integer, nullable=False)
-    rpe = Column(Integer)  # Rate of Perceived Exertion (1-10)
+    
+    # 筋力トレーニング用フィールド
+    weight = Column(Float, nullable=True)  # 重量（kg）
+    reps = Column(Integer, nullable=True)  # 回数
+    rpe = Column(Integer, nullable=True)   # Rate of Perceived Exertion (1-10)
+    
+    # 有酸素運動用フィールド
+    duration_seconds = Column(Integer, nullable=True)  # 時間（秒）
+    distance_km = Column(Float, nullable=True)         # 距離（km）
+    incline_percent = Column(Float, nullable=True)     # 傾斜（%）
+    avg_heart_rate = Column(Integer, nullable=True)    # 平均心拍数（将来的な拡張用）
+    
+    # 共通フィールド
     is_warmup = Column(Boolean, default=False)
     note = Column(Text)
     

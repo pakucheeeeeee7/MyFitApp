@@ -24,9 +24,7 @@ export const useUpdateProfile = (onSuccessCallback?: () => void) => {
     onSuccess: (updatedProfile: UserProfile) => {
       // プロフィールキャッシュを更新
       queryClient.setQueryData(['profile'], updatedProfile);
-      toast.success('プロフィールを更新しました！2秒後にダッシュボードに戻ります。', {
-        duration: 2000,
-      });
+      toast.success('プロフィールを更新しました！');
       
       // コールバック関数があれば実行
       if (onSuccessCallback) {

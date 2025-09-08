@@ -94,15 +94,61 @@ export function WorkoutDetailModal({
                     )}
                     
                     {workout.workout_exercises && workout.workout_exercises.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <h4 className="font-medium text-sm text-gray-700">実施種目:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {workout.workout_exercises.map((we, idx) => (
-                            <Badge key={idx} variant="outline">
-                              {we.exercise.name}
-                              {we.sets && we.sets.length > 0 && ` (${we.sets.length}セット)`}
-                            </Badge>
-                          ))}
+                        <div className="space-y-3">
+                          {workout.workout_exercises.map((we, idx) => {
+                            const isCardio = we.exercise.exercise_type === 'cardio';
+                            
+                            return (
+                              <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="outline">
+                                    {we.exercise.name}
+                                  </Badge>
+                                  <span className="text-xs text-gray-500">
+                                    ({we.exercise.muscle_group})
+                                  </span>
+                                  {isCardio && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      有酸素
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                {we.sets && we.sets.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {we.sets.map((set, setIdx) => (
+                                      <div key={setIdx} className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                                        <span className="font-medium">セット{set.set_index}:</span>
+                                        {isCardio ? (
+                                          <span className="ml-1">
+                                            {set.duration_seconds && `${Math.floor(set.duration_seconds / 60)}:${(set.duration_seconds % 60).toString().padStart(2, '0')}`}
+                                            {set.distance_km && ` • ${set.distance_km}km`}
+                                            {set.incline_percent && ` • ${set.incline_percent}%`}
+                                            {set.avg_heart_rate && ` • ${set.avg_heart_rate}bpm`}
+                                          </span>
+                                        ) : (
+                                          <span className="ml-1">
+                                            {set.weight}kg × {set.reps}回
+                                            {set.rpe && ` (RPE ${set.rpe})`}
+                                          </span>
+                                        )}
+                                        {set.is_warmup && (
+                                          <span className="ml-1 text-yellow-600">[W]</span>
+                                        )}
+                                        {set.note && (
+                                          <span className="ml-1 italic">({set.note})</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400">セットが記録されていません</p>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : (

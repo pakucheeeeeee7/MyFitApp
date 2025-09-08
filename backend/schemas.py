@@ -31,6 +31,7 @@ class TokenData(BaseModel):
 class ExerciseBase(BaseModel):
     name: str
     muscle_group: str
+    exercise_type: str = "strength"  # "strength" or "cardio"
 
 class ExerciseCreate(ExerciseBase):
     pass
@@ -38,6 +39,7 @@ class ExerciseCreate(ExerciseBase):
 class ExerciseResponse(ExerciseBase):
     id: int
     user_id: Optional[int]
+    exercise_type: str
     is_builtin: bool
     
     class Config:
@@ -65,16 +67,34 @@ class WorkoutResponse(BaseModel):
 
 # セット関連スキーマ
 class SetCreate(BaseModel):
-    weight: float
-    reps: int
+    # 筋力トレーニング用フィールド
+    weight: Optional[float] = None
+    reps: Optional[int] = None
     rpe: Optional[int] = None
+    
+    # 有酸素運動用フィールド
+    duration_seconds: Optional[int] = None  # 時間（秒）
+    distance_km: Optional[float] = None     # 距離（km）
+    incline_percent: Optional[float] = None  # 傾斜（%）
+    avg_heart_rate: Optional[int] = None    # 平均心拍数
+    
+    # 共通フィールド
     is_warmup: bool = False
     note: Optional[str] = None
 
 class SetUpdate(BaseModel):
+    # 筋力トレーニング用フィールド
     weight: Optional[float] = None
     reps: Optional[int] = None
     rpe: Optional[int] = None
+    
+    # 有酸素運動用フィールド
+    duration_seconds: Optional[int] = None
+    distance_km: Optional[float] = None
+    incline_percent: Optional[float] = None
+    avg_heart_rate: Optional[int] = None
+    
+    # 共通フィールド
     is_warmup: Optional[bool] = None
     note: Optional[str] = None
 
@@ -82,9 +102,19 @@ class SetResponse(BaseModel):
     id: int
     workout_exercise_id: int
     set_index: int
-    weight: float
-    reps: int
+    
+    # 筋力トレーニング用フィールド
+    weight: Optional[float]
+    reps: Optional[int]
     rpe: Optional[int]
+    
+    # 有酸素運動用フィールド
+    duration_seconds: Optional[int]
+    distance_km: Optional[float]
+    incline_percent: Optional[float]
+    avg_heart_rate: Optional[int]
+    
+    # 共通フィールド
     is_warmup: bool
     note: Optional[str]
     
