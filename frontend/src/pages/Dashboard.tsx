@@ -1,12 +1,21 @@
 import { useAuth } from '../hooks/useAuth';
 import { useDashboard } from '../hooks/useDashboard';
+import { useViewMode } from '../hooks/useViewMode';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { WorkoutCalendar } from '../components/workout/WorkoutCalendar';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const { stats, recentWorkouts, isLoading, error } = useDashboard();
+  const [viewMode, setViewMode] = useViewMode('dashboard-workout-view', 'list');
+  
+  // 現在の月を取得（カレンダー表示用）
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM形式
+  
+  const { stats, recentWorkouts, monthlyWorkouts, isLoading, error } = useDashboard(
+    viewMode === 'calendar' ? { month: currentMonth } : {}
+  );
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -151,52 +160,95 @@ export default function Dashboard() {
         {/* 最近のワークアウト */}
         <Card>
           <CardHeader>
-            <CardTitle>最近のワークアウト</CardTitle>
-            <CardDescription>
-              過去5回のワークアウト履歴
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentWorkouts && recentWorkouts.length > 0 ? (
-              <div className="space-y-4">
-                {recentWorkouts.map((workout) => (
-                  <div
-                    key={workout.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{formatDate(workout.date)}</p>
-                      <p className="text-sm text-gray-600">
-                        {workout.workout_exercises?.length || 0}種目
-                      </p>
-                      {workout.note && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          {workout.note}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/workout/${workout.id}`)}
-                    >
-                      詳細
-                    </Button>
-                  </div>
-                ))}
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>最近のワークアウト</CardTitle>
+                <CardDescription>
+                  {viewMode === 'list' ? '過去5回のワークアウト履歴' : '今月のワークアウト実施状況'}
+                </CardDescription>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">
-                  まだワークアウトの記録がありません
-                </p>
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => navigate('/workout')}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setViewMode('list')}
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
                 >
-                  最初のワークアウトを記録する
+                  リスト
+                </Button>
+                <Button
+                  onClick={() => setViewMode('calendar')}
+                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                  size="sm"
+                >
+                  カレンダー
                 </Button>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {viewMode === 'list' ? (
+              // リスト表示
+              recentWorkouts && recentWorkouts.length > 0 ? (
+                <div className="space-y-4">
+                  {recentWorkouts.map((workout: any) => (
+                    <div
+                      key={workout.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{formatDate(workout.date)}</p>
+                        <p className="text-sm text-gray-600">
+                          {workout.workout_exercises?.length || 0}種目
+                        </p>
+                        {workout.note && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {workout.note}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/workout/${workout.id}`)}
+                      >
+                        詳細
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">
+                    まだワークアウトの記録がありません
+                  </p>
+                  <Button
+                    onClick={() => navigate('/workout')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    最初のワークアウトを記録する
+                  </Button>
+                </div>
+              )
+            ) : (
+              // カレンダー表示
+              monthlyWorkouts && monthlyWorkouts.length > 0 ? (
+                <WorkoutCalendar
+                  workouts={monthlyWorkouts}
+                  onWorkoutClick={(workoutId) => navigate(`/workout/${workoutId}`)}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">
+                    まだワークアウトの記録がありません
+                  </p>
+                  <Button
+                    onClick={() => navigate('/workout')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    最初のワークアウトを記録する
+                  </Button>
+                </div>
+              )
             )}
           </CardContent>
         </Card>

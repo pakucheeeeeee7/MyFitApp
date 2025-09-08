@@ -114,10 +114,16 @@ class WorkoutDetailResponse(BaseModel):
     user_id: int
     date: datetime
     note: Optional[str]
+    is_completed: bool
+    completed_at: Optional[datetime] = None
     workout_exercises: list[WorkoutExerciseResponse]
     
     class Config:
         from_attributes = True
+        # 日時フィールドの処理を改善
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 
 

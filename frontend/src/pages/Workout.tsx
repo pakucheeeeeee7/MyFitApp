@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { useWorkout } from '../hooks/useWorkout';
 import { ExerciseSelector } from '../components/workout/ExerciseSelector';
@@ -12,6 +13,9 @@ export default function Workout() {
   const navigate = useNavigate();
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [workoutNote, setWorkoutNote] = useState('');
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0] // YYYY-MM-DD形式の今日の日付
+  );
   
   const {
     todayWorkout,
@@ -22,7 +26,7 @@ export default function Workout() {
     isAddingExercise,
     completeWorkout,
     isCompleting,
-  } = useWorkout();
+  } = useWorkout(selectedDate);
 
   const handleStartWorkout = async () => {
     await startTodayWorkout(workoutNote);
@@ -38,12 +42,15 @@ export default function Workout() {
     }
   };
 
-  const currentDate = new Date().toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  });
+  // 選択された日付の表示用フォーマット
+  const formatSelectedDate = (dateString: string) => {
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    });
+  };
 
   const handleCompleteWorkout = async () => {
     if (!todayWorkout?.id) return;
@@ -71,8 +78,8 @@ export default function Workout() {
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold">今日のワークアウト</h1>
-            <p className="text-gray-600">{currentDate}</p>
+            <h1 className="text-3xl font-bold">ワークアウト</h1>
+            <p className="text-gray-600">{formatSelectedDate(selectedDate)}</p>
           </div>
           <Button 
             variant="outline"
@@ -91,10 +98,24 @@ export default function Workout() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    今日のメモ（任意）
-                  </label>
+                  <Label htmlFor="workout-date" className="block text-sm font-medium mb-1">
+                    ワークアウト日付
+                  </Label>
                   <Input
+                    id="workout-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]} // 今日以前のみ選択可能
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="workout-note" className="block text-sm font-medium mb-1">
+                    ワークアウトメモ（任意）
+                  </Label>
+                  <Input
+                    id="workout-note"
                     value={workoutNote}
                     onChange={(e) => setWorkoutNote(e.target.value)}
                     placeholder="例: 胸筋・三頭筋、調子良い"

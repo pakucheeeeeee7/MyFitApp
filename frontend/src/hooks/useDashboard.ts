@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardAPI } from '../lib/api';
+import { dashboardAPI, workoutAPI } from '../lib/api';
 
-export function useDashboard() {
+interface UseDashboardOptions {
+  month?: string; // YYYY-MM形式
+}
+
+export function useDashboard(options: UseDashboardOptions = {}) {
   // 統計データを取得
   const {
     data: stats,
@@ -22,12 +26,35 @@ export function useDashboard() {
     queryKey: ['dashboard', 'recent-workouts'],
     queryFn: () => dashboardAPI.getRecentWorkouts(5).then(res => res.data),
     staleTime: 1000 * 60 * 2,
+    enabled: !options.month, // 月が指定されていない場合のみ実行
+  });
+
+  // 月ごとのワークアウトを取得（カレンダー表示用）
+  const {
+    data: monthlyWorkouts,
+    isLoading: isMonthlyLoading,
+    error: monthlyError,
+  } = useQuery({
+    queryKey: ['dashboard', 'monthly-workouts', options.month],
+    queryFn: async () => {
+      if (!options.month) return [];
+      const [year, month] = options.month.split('-');
+      const startDate = `${year}-${month}-01`;
+      const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+      
+      const response = await workoutAPI.getWorkouts(startDate, endDate, true); // 全ワークアウト取得
+      // カレンダーには完了済みワークアウトのみ表示
+      return response.data.filter(workout => workout.is_completed);
+    },
+    enabled: !!options.month,
+    staleTime: 1000 * 60 * 5,
   });
 
   return {
     stats,
     recentWorkouts: recentWorkouts || [],
-    isLoading: isStatsLoading || isWorkoutsLoading,
-    error: statsError || workoutsError,
+    monthlyWorkouts: monthlyWorkouts || [],
+    isLoading: isStatsLoading || isWorkoutsLoading || isMonthlyLoading,
+    error: statsError || workoutsError || monthlyError,
   };
 }

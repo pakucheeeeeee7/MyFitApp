@@ -11,16 +11,30 @@ MyFitApp/
 │   │   │   ├── layout/         # レイアウトコンポーネント
 │   │   │   └── workout/        # ワークアウト専用コンポーネント
 │   │   │       ├── ExerciseSelector.tsx      # 種目選択モーダル
-│   │   │       └── WorkoutExerciseCard.tsx   # セット記録UI
+│   │   │       ├── WorkoutExerciseCard.tsx   # セット記録UI
+│   │   │       ├── WorkoutCalendar.tsx       # ワークアウト履歴カレンダー
+│   │   │       ├── WorkoutDetailModal.tsx    # ワークアウト詳細モーダル
+│   │   │       ├── WorkoutTimer.tsx          # ワークアウトタイマー
+│   │   │       └── SetRecord.tsx             # セット記録管理
 │   │   ├── pages/              # ページコンポーネント
 │   │   │   ├── Login.tsx       # ログイン・サインアップページ
-│   │   │   ├── Dashboard.tsx   # ダッシュボード（統計表示）
-│   │   │   └── Workout.tsx     # ワークアウト記録ページ
+│   │   │   ├── Dashboard.tsx   # ダッシュボード（統計・カレンダー表示）
+│   │   │   ├── Workout.tsx     # ワークアウト記録ページ
+│   │   │   ├── Profile.tsx     # プロフィール設定ページ
+│   │   │   ├── BodyMetrics.tsx # 体重・身体管理ページ
+│   │   │   └── AdvancedAnalytics.tsx # 詳細分析ページ
 │   │   ├── hooks/              # カスタムフック
 │   │   │   ├── useAuth.ts      # 認証ロジック
 │   │   │   ├── useDashboard.ts # ダッシュボードデータ
 │   │   │   ├── useWorkout.ts   # ワークアウト管理
-│   │   │   └── useSet.ts       # セット操作
+│   │   │   ├── useWorkoutDetails.ts # ワークアウト詳細取得
+│   │   │   ├── useViewMode.ts  # 表示モード切り替え（localStorage永続化）
+│   │   │   ├── useSets.ts      # セット操作
+│   │   │   ├── useExercises.ts # 種目管理
+│   │   │   ├── useProfile.ts   # プロフィール管理
+│   │   │   ├── useBodyMetrics.ts # 体重記録
+│   │   │   ├── useHeightRecords.ts # 身長記録
+│   │   │   └── useAdvancedAnalytics.ts # 詳細分析
 │   │   ├── stores/             # 状態管理
 │   │   │   └── authStore.ts    # Zustand認証状態
 │   │   ├── lib/                # ユーティリティ
@@ -29,7 +43,8 @@ MyFitApp/
 │   │   │   └── utils.ts        # 共通ユーティリティ
 │   │   ├── types/              # 型定義
 │   │   │   ├── auth.ts         # 認証関連型
-│   │   │   └── workout.ts      # ワークアウト関連型
+│   │   │   ├── workout.ts      # ワークアウト関連型
+│   │   │   └── profile.ts      # プロフィール・身体測定関連型
 │   │   ├── App.tsx             # ルーティング・PrivateRoute
 │   │   ├── main.tsx            # React Query Provider
 │   │   └── index.css           # Tailwind CSS
@@ -1821,6 +1836,69 @@ const { toast } = useToast();
 5. ✅ **高度分析**: BMI・BMR・理想体重・体組成分析
 6. ✅ **ダッシュボード**: 統計表示・最近のワークアウト
 7. ✅ **データ可視化**: Chart.jsによる美しいグラフ
+8. ✅ **カレンダー機能**: ワークアウト履歴の視覚的表示（Day 8で実装）
+9. ✅ **ワークアウト詳細モーダル**: カレンダーからの詳細確認（Day 8で実装）
+
+#### **最新追加機能（Day 8実装）**
+
+##### **📅 ワークアウトカレンダー機能**
+```typescript
+// components/workout/WorkoutCalendar.tsx
+export const WorkoutCalendar: React.FC<WorkoutCalendarProps> = ({ workouts }) => {
+  // ✅ 月表示カレンダー
+  // ✅ ワークアウト実施日の緑色ハイライト
+  // ✅ 連続実施日数の表示
+  // ✅ クリック可能な日付セル
+}
+```
+
+##### **🗓️ 表示モード切り替え**
+```typescript
+// hooks/useViewMode.ts - localStorage永続化
+export function useViewMode(key: string, defaultValue: 'list' | 'calendar') {
+  // ✅ リスト表示とカレンダー表示の切り替え
+  // ✅ ユーザー設定の永続化（localStorage）
+  // ✅ ダッシュボードでのシームレスな切り替え
+}
+```
+
+##### **📱 ワークアウト詳細モーダル**
+```typescript
+// components/workout/WorkoutDetailModal.tsx
+export const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({
+  isOpen, onClose, workout
+}) => {
+  // ✅ カレンダー日付クリックで詳細表示
+  // ✅ エクササイズ一覧・セット詳細表示
+  // ✅ 透明背景・アクセシブルなUI
+  // ✅ 完了状態の表示
+}
+```
+
+##### **📊 月間データ取得**
+```typescript
+// hooks/useDashboard.ts
+const { monthlyWorkouts } = useDashboard({
+  month: currentMonth // YYYY-MM形式
+});
+// ✅ 指定月のワークアウトデータ効率取得
+// ✅ 完了済みワークアウトのフィルタリング
+// ✅ カレンダー表示用の最適化
+```
+
+##### **⏰ 過去日記録機能**
+```typescript
+// pages/Workout.tsx - 日付選択
+<Input
+  type="date"
+  value={selectedDate}
+  max={new Date().toISOString().split('T')[0]}
+  onChange={(e) => setSelectedDate(e.target.value)}
+/>
+// ✅ 過去の日付でワークアウト記録可能
+// ✅ カレンダーへの即座反映
+// ✅ 日付バリデーション（未来日禁止）
+```
 
 #### **品質保証（100%完了）**
 1. ✅ **バグ修正**: 422エラー、型エラー等すべて解決
