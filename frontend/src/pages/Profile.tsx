@@ -34,6 +34,7 @@ const ProfilePage: React.FC = () => {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      username: profile?.username || '',
       birth_date: profile?.birth_date || '',
       gender: profile?.gender || undefined,
     },
@@ -51,6 +52,7 @@ const ProfilePage: React.FC = () => {
   React.useEffect(() => {
     if (profile) {
       form.reset({
+        username: profile.username || '',
         birth_date: profile.birth_date || '',
         gender: profile.gender || undefined,
       });
@@ -60,6 +62,7 @@ const ProfilePage: React.FC = () => {
   const onSubmit = async (data: ProfileFormData) => {
     try {
       await updateProfile({
+        username: data.username?.trim() || null,
         birth_date: data.birth_date || null,
         gender: data.gender || null,
       });
@@ -134,6 +137,29 @@ const ProfilePage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* ユーザーネーム入力 */}
+            <div className="space-y-2">
+              <Label htmlFor="username" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                ユーザーネーム
+              </Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="ユーザーネームを入力（3-20文字、省略可）"
+                {...form.register('username')}
+                className="w-full"
+              />
+              {form.formState.errors.username && (
+                <p className="text-sm text-red-500">
+                  {form.formState.errors.username.message}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                ユーザーネームは省略可能です。設定すると表示名として使用されます。
+              </p>
+            </div>
+
             {/* 生年月日入力 */}
             <div className="space-y-2">
               <Label htmlFor="birth_date" className="flex items-center gap-2">

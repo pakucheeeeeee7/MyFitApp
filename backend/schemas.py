@@ -14,6 +14,7 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
+    username: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -189,12 +190,14 @@ class BodyAnalyticsSummaryResponse(BaseModel):
 
 # ユーザープロフィール管理用スキーマ
 class UserProfileUpdate(BaseModel):
+    username: Optional[str] = None
     birth_date: Optional[date] = None
     gender: Optional[str] = None  # "male", "female", "other"
 
 class UserProfileResponse(BaseModel):
     id: int
     email: str
+    username: Optional[str] = None
     birth_date: Optional[date]
     gender: Optional[str]
     age: Optional[int]  # 計算される年齢

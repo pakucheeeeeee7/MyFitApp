@@ -30,6 +30,15 @@ export const signupSchema = z.object({
 
 // プロフィール更新フォームのバリデーション
 export const profileSchema = z.object({
+  username: z
+    .string()
+    .optional()
+    .refine((username) => {
+      if (!username || username.trim() === '') return true; // 空の場合はOK
+      return username.length >= 3 && username.length <= 20;
+    }, {
+      message: 'ユーザーネームは3文字以上20文字以下で入力してください',
+    }),
   birth_date: z
     .string()
     .optional()

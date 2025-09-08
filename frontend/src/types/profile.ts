@@ -1,6 +1,7 @@
 export interface UserProfile {
   id: number;
   email: string;
+  username: string | null;
   birth_date: string | null;
   gender: 'male' | 'female' | 'other' | null;
   age: number | null;
@@ -8,6 +9,7 @@ export interface UserProfile {
 }
 
 export interface ProfileUpdateRequest {
+  username?: string | null;
   birth_date?: string | null;
   gender?: 'male' | 'female' | 'other' | null;
 }

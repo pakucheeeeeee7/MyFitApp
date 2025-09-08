@@ -869,6 +869,7 @@ async def get_user_profile(
     return schemas.UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
+        username=current_user.username,
         birth_date=current_user.birth_date,
         gender=current_user.gender,
         age=age,
@@ -883,6 +884,32 @@ async def update_user_profile(
 ):
     """ユーザープロフィール更新"""
     from datetime import date
+    
+    # ユーザーネームの検証
+    if profile_data.username is not None:
+        if profile_data.username.strip() == "":
+            # 空文字の場合はNoneに設定（ユーザーネーム削除）
+            current_user.username = None
+        else:
+            # ユーザーネームの重複チェック
+            existing_user = db.query(models.User).filter(
+                models.User.username == profile_data.username,
+                models.User.id != current_user.id
+            ).first()
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="このユーザーネームは既に使用されています"
+                )
+            
+            # ユーザーネームの長さ制限（3-20文字）
+            if len(profile_data.username) < 3 or len(profile_data.username) > 20:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="ユーザーネームは3文字以上20文字以下で入力してください"
+                )
+            
+            current_user.username = profile_data.username
     
     # 性別の検証
     if profile_data.gender and profile_data.gender not in ["male", "female", "other"]:
@@ -929,6 +956,7 @@ async def update_user_profile(
     return schemas.UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
+        username=current_user.username,
         birth_date=current_user.birth_date,
         gender=current_user.gender,
         age=age,
