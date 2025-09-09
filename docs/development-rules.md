@@ -207,6 +207,27 @@ cd backend
 cd frontend  
 npm run dev  # localhost:5173
 ```
+
+### 内蔵種目管理（データ保持型アップデート）
+```bash
+# 初回セットアップ（既存データがある場合はスキップ）
+cd backend
+python seed_data.py
+
+# 内蔵種目を更新（ユーザーデータを保持）
+python seed_data.py update
+
+# 現在の内蔵種目を確認
+python seed_data.py show
+
+# ヘルプを表示
+python seed_data.py help
+```
+**特徴:**
+- ✅ **データ保持**: ユーザーの独自種目・ワークアウト履歴を保持
+- ✅ **インクリメンタル更新**: 既存種目は更新、新種目は追加
+- ✅ **詳細ログ**: 更新・追加された種目数を表示
+- ✅ **安全性**: トランザクション管理でデータ整合性を保証
 ## 📁 主要ファイル構造詳細
 
 ## 🔗 API エンドポイント一覧
