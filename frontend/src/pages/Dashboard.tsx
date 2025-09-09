@@ -1,247 +1,151 @@
-import { useAuth } from '../hooks/useAuth';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../hooks/useDashboard';
 import { useViewMode } from '../hooks/useViewMode';
-import { useProfile } from '../hooks/useProfile';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { WorkoutCalendar } from '../components/workout/WorkoutCalendar';
 import { DashboardStatsCards } from '../components/dashboard/DashboardStatsCards';
 import { DashboardSettingsModal } from '../components/dashboard/DashboardSettingsModal';
-import { useDashboardConfig } from '../hooks/useDashboardConfig';
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { WorkoutCalendar } from '../components/workout/WorkoutCalendar';
+import { WorkoutListItem } from '../components/dashboard/WorkoutListItem';
+import { Layout } from '../components/layout/Layout';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Calendar, List } from 'lucide-react';
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('ja-JP', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short'
+  });
+};
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const { data: profile } = useProfile();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useViewMode('dashboard-workout-view', 'list');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { config } = useDashboardConfig();
   
-  // 現在の月を取得（カレンダー表示用）
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM形式
-  
-  const { stats, recentWorkouts, monthlyWorkouts, isLoading, error } = useDashboard(
-    viewMode === 'calendar' ? { month: currentMonth } : {}
-  );
-  const navigate = useNavigate();
+  const { stats, recentWorkouts, monthlyWorkouts, isLoading, error } = useDashboard();
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ja-JP', {
-      month: 'short',
-      day: 'numeric',
-      weekday: 'short'
-    });
-  };
-
-  // ユーザーネームまたはメールアドレスを表示用に取得
-  const displayName = profile?.username || user?.email || 'ユーザー';
-
-  // ダッシュボードのデータ読み込み中（認証は完了済み）
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">MyFit</h1>
-                <p className="text-sm text-gray-600">おかえりなさい、{displayName}さん</p>
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-              >
-                ログアウト
-              </Button>
-            </div>
+      <Layout>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">ダッシュボードを読み込み中...</p>
           </div>
-        </header>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-lg text-gray-600">データを読み込み中...</div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">MyFit</h1>
-              <p className="text-sm text-gray-600">おかえりなさい、{displayName}さん</p>
-            </div>
-            <div className="flex space-x-4">
-              <Button
-                onClick={() => navigate('/workout')}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                ワークアウト開始
-              </Button>
-              <Button
-                onClick={() => navigate('/body-metrics')}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                体重記録
-              </Button>
-              <Button
-                onClick={() => navigate('/analytics')}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                高度分析
-              </Button>
-              <Button
-                onClick={() => navigate('/profile')}
-                variant="outline"
-              >
-                プロフィール設定
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-              >
-                ログアウト
-              </Button>
-            </div>
+    <Layout>
+      {/* エラー表示 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+          <p className="text-red-800">データの読み込みに失敗しました。ページを再読み込みしてください。</p>
+        </div>
+      )}
+
+      {/* ページタイトル */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">ダッシュボード</h1>
+          <p className="text-sm text-gray-600 mt-1">今日のトレーニング状況を確認しましょう</p>
+        </div>
+      </div>
+
+      {/* 統計カード */}
+      {stats && (
+        <div className="mb-8">
+          <DashboardStatsCards 
+            stats={stats} 
+            onOpenSettings={() => setIsSettingsOpen(true)} 
+          />
+        </div>
+      )}
+
+      {/* ワークアウト履歴セクション */}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {viewMode === 'calendar' ? 'ワークアウトカレンダー' : '最近のワークアウト'}
+          </h2>
+          
+          {/* ビュー切り替えボタンをここに移動 */}
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {viewMode === 'list' ? (
+                <>
+                  <Calendar className="h-4 w-4" />
+                  カレンダー表示
+                </>
+              ) : (
+                <>
+                  <List className="h-4 w-4" />
+                  リスト表示
+                </>
+              )}
+            </Button>
           </div>
         </div>
-      </header>
 
-      {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* エラー表示 */}
-        {error && (
-          <Card className="mb-6 border-red-200 bg-red-50">
-            <CardContent className="pt-6">
-              <p className="text-red-600">
-                データの読み込みに失敗しました。バックエンドが起動していることを確認してください。
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ダッシュボード統計カード */}
-        {stats && (
-          <div className="mb-8">
-            <DashboardStatsCards 
-              key={config.selectedWidgets.join(',')} 
-              stats={stats} 
-              onOpenSettings={() => setIsSettingsOpen(true)} 
-            />
-          </div>
-        )}
-
-        {/* 最近のワークアウト */}
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle>最近のワークアウト</CardTitle>
-                <CardDescription>
-                  {viewMode === 'list' ? '過去5回のワークアウト履歴' : '今月のワークアウト実施状況'}
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setViewMode('list')}
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                >
-                  リスト
-                </Button>
-                <Button
-                  onClick={() => setViewMode('calendar')}
-                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
-                  size="sm"
-                >
-                  カレンダー
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {viewMode === 'list' ? (
-              // リスト表示
-              recentWorkouts && recentWorkouts.length > 0 ? (
-                <div className="space-y-4">
+        {viewMode === 'list' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>最近のワークアウト</CardTitle>
+              <CardDescription>
+                直近のトレーニング履歴
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentWorkouts && recentWorkouts.length > 0 ? (
+                <div className="space-y-3">
                   {recentWorkouts.map((workout: any) => (
-                    <div
+                    <WorkoutListItem
                       key={workout.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium">{formatDate(workout.date)}</p>
-                        <p className="text-sm text-gray-600">
-                          {workout.workout_exercises?.length || 0}種目
-                        </p>
-                        {workout.note && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            {workout.note}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/workout/${workout.id}`)}
-                      >
-                        詳細
-                      </Button>
-                    </div>
+                      workout={workout}
+                      formatDate={formatDate}
+                    />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">
-                    まだワークアウトの記録がありません
-                  </p>
+                <div className="text-center py-8 text-gray-500">
+                  <p>まだワークアウトがありません</p>
+                  <p className="text-sm mt-1">新しいワークアウトを開始しましょう！</p>
                   <Button
                     onClick={() => navigate('/workout')}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="mt-4"
                   >
-                    最初のワークアウトを記録する
+                    ワークアウトを開始
                   </Button>
                 </div>
-              )
-            ) : (
-              // カレンダー表示
-              monthlyWorkouts && monthlyWorkouts.length > 0 ? (
-                <WorkoutCalendar
-                  workouts={monthlyWorkouts}
-                  onWorkoutClick={(workoutId) => navigate(`/workout/${workoutId}`)}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">
-                    まだワークアウトの記録がありません
-                  </p>
-                  <Button
-                    onClick={() => navigate('/workout')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    最初のワークアウトを記録する
-                  </Button>
-                </div>
-              )
-            )}
-          </CardContent>
-        </Card>
-      </main>
-      
-      {/* ダッシュボード設定モーダル */}
-      <DashboardSettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-6">
+              <WorkoutCalendar 
+                workouts={monthlyWorkouts || []} 
+                onWorkoutClick={(workoutId) => navigate(`/workout-history/${workoutId}`)}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* 設定モーダル */}
+      <DashboardSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
-    </div>
+    </Layout>
   );
 }

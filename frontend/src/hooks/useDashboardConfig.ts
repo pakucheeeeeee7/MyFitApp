@@ -11,8 +11,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'fitness',
     enabled: true,
     getValue: (stats) => stats.total_workouts,
-    format: 'number',
-    icon: '💪'
+    format: 'number'
   },
   {
     id: 'this_week_workouts',
@@ -21,8 +20,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'fitness',
     enabled: true,
     getValue: (stats) => stats.this_week_workouts,
-    format: 'number',
-    icon: '📅'
+    format: 'number'
   },
   {
     id: 'total_volume',
@@ -31,8 +29,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'fitness',
     enabled: true,
     getValue: (stats) => stats.total_volume,
-    format: 'decimal',
-    icon: '🏋️'
+    format: 'decimal'
   },
   {
     id: 'this_week_volume',
@@ -41,8 +38,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'fitness',
     enabled: true,
     getValue: (stats) => stats.this_week_volume,
-    format: 'decimal',
-    icon: '📊'
+    format: 'decimal'
   },
   {
     id: 'today_total_estimated_calories',
@@ -51,8 +47,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'health',
     enabled: false,
     getValue: (stats) => stats.today_total_estimated_calories,
-    format: 'calories',
-    icon: '🔥'
+    format: 'calories'
   },
   {
     id: 'today_calories_burned',
@@ -61,8 +56,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'health',
     enabled: false,
     getValue: (stats) => stats.today_calories_burned,
-    format: 'calories',
-    icon: '⚡'
+    format: 'calories'
   },
   {
     id: 'this_week_calories_burned',
@@ -71,8 +65,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'health',
     enabled: false,
     getValue: (stats) => stats.this_week_calories_burned,
-    format: 'calories',
-    icon: '🔥'
+    format: 'calories'
   },
   {
     id: 'weight_change_since_last',
@@ -81,8 +74,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'progress',
     enabled: false,
     getValue: (stats) => stats.weight_change_since_last,
-    format: 'weight',
-    icon: '⚖️'
+    format: 'weight'
   },
   {
     id: 'latest_weight',
@@ -91,8 +83,7 @@ export const availableWidgets: DashboardWidget[] = [
     category: 'health',
     enabled: false,
     getValue: (stats) => stats.latest_weight,
-    format: 'weight',
-    icon: '📏'
+    format: 'weight'
   }
 ];
 

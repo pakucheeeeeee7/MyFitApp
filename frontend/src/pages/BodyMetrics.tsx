@@ -8,8 +8,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { Layout } from '../components/layout/Layout';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Loader2, Scale, TrendingUp, ArrowLeft, Calendar, NotebookPen } from 'lucide-react';
+import { Loader2, Scale, TrendingUp, Calendar, NotebookPen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const BodyMetricsPage: React.FC = () => {

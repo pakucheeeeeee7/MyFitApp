@@ -442,6 +442,63 @@ async def get_sets(
     return sets
 
 
+@app.delete("/sets/{set_id}", status_code=204)
+async def delete_set(
+    set_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """セットを削除"""
+    # セットの確認と所有者チェック
+    db_set = db.query(models.Set).join(models.WorkoutExercise).join(models.Workout).filter(
+        models.Set.id == set_id,
+        models.Workout.user_id == current_user.id
+    ).first()
+    
+    if not db_set:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="セットが見つかりません"
+        )
+    
+    # セットを削除
+    db.delete(db_set)
+    db.commit()
+    
+    return
+
+
+@app.delete("/workout-exercises/{workout_exercise_id}", status_code=204)
+async def delete_workout_exercise(
+    workout_exercise_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """ワークアウト種目を削除（関連するセットも削除）"""
+    # ワークアウト種目の確認と所有者チェック
+    workout_exercise = db.query(models.WorkoutExercise).join(models.Workout).filter(
+        models.WorkoutExercise.id == workout_exercise_id,
+        models.Workout.user_id == current_user.id
+    ).first()
+    
+    if not workout_exercise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ワークアウト種目が見つかりません"
+        )
+    
+    # 関連するセットを先に削除
+    db.query(models.Set).filter(
+        models.Set.workout_exercise_id == workout_exercise_id
+    ).delete()
+    
+    # ワークアウト種目を削除
+    db.delete(workout_exercise)
+    db.commit()
+    
+    return
+
+
 # 分析機能関連エンドポイント
 @app.get("/analytics/exercise/{exercise_id}/1rm")
 async def get_exercise_1rm_history(

@@ -32,6 +32,23 @@ api.interceptors.request.use(
   }
 );
 
+// 認証エラー時の自動リダイレクト
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // トークンを削除
+      localStorage.removeItem('access_token');
+      
+      // ログイン画面にリダイレクト
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // 認証API関数
 export const authAPI = {
   signup: (email: string, password: string) =>
@@ -119,6 +136,9 @@ export const workoutDetailAPI = {
   
   deleteSet: (setId: number) =>
     api.delete(`/sets/${setId}`),
+  
+  deleteWorkoutExercise: (workoutExerciseId: number) =>
+    api.delete(`/workout-exercises/${workoutExerciseId}`),
   
   completeWorkout: (workoutId: number) =>
     api.patch<{ message: string; workout_id: number }>(`/workouts/${workoutId}/complete`),

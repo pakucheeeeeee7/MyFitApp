@@ -10,7 +10,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Textarea } from '../components/ui/textarea';
-import { Loader2, User, Calendar, Users, ArrowLeft, Home, Ruler, Plus, BarChart3 } from 'lucide-react';
+import { Layout } from '../components/layout/Layout';
+import { Loader2, User, Calendar, Users, Ruler, Plus, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
@@ -81,43 +82,28 @@ const ProfilePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">プロフィールを読み込み中...</span>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">プロフィールを読み込み中...</span>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      {/* ナビゲーションヘッダー */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          ダッシュボードに戻る
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2"
-        >
-          <Home className="h-4 w-4" />
-          ホーム
-        </Button>
-      </div>
-
-      <div className="text-center">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <User className="h-8 w-8" />
-          プロフィール設定
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          年齢と性別情報で、より正確な身体分析を提供します
-        </p>
+    <Layout>
+      {/* ページタイトル */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <User className="h-6 w-6 sm:h-8 sm:w-8" />
+            プロフィール設定
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            年齢と性別情報で、より正確な身体分析を提供します
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -417,7 +403,7 @@ const ProfilePage: React.FC = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+    </Layout>
   );
 };
 

@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { WorkoutExercise } from '../../types/workout';
 import { SetRecord } from './SetRecord';
 import { useSets } from '../../hooks/useSets';
+import { useWorkout } from '../../hooks/useWorkout';
+import { Trash2 } from 'lucide-react';
 
 interface WorkoutExerciseCardProps {
   workoutExercise: WorkoutExercise;
@@ -10,6 +12,7 @@ interface WorkoutExerciseCardProps {
 
 export function WorkoutExerciseCard({ workoutExercise }: WorkoutExerciseCardProps) {
   const { deleteSet, calculateOneRepMax, isDeleting } = useSets();
+  const { deleteWorkoutExercise, isDeletingExercise } = useWorkout();
   const { exercise, sets } = workoutExercise;
 
   const isCardio = exercise.exercise_type === 'cardio';
@@ -43,11 +46,22 @@ export function WorkoutExerciseCard({ workoutExercise }: WorkoutExerciseCardProp
               </span>
             )}
           </div>
-          {estimated1RM && (
-            <div className="text-sm text-blue-600">
-              推定1RM: {estimated1RM.weight}kg
-            </div>
-          )}
+          <div className="flex items-center space-x-2">
+            {estimated1RM && (
+              <div className="text-sm text-blue-600">
+                推定1RM: {estimated1RM.weight}kg
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => deleteWorkoutExercise(workoutExercise.id)}
+              disabled={isDeletingExercise}
+              className="text-red-600 hover:text-red-800"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -36,7 +36,7 @@ export function DashboardStatsCards({ stats, calorieGoal, onOpenSettings }: Dash
         </p>
         <Button onClick={onOpenSettings} variant="outline">
           <Settings className="w-4 h-4 mr-2" />
-          設定を開く
+          カスタマイズ
         </Button>
       </div>
     );
@@ -67,7 +67,6 @@ export function DashboardStatsCards({ stats, calorieGoal, onOpenSettings }: Dash
                 <CardTitle className="text-sm font-medium">
                   {widget.title}
                 </CardTitle>
-                <span className="text-lg">{widget.icon}</span>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">

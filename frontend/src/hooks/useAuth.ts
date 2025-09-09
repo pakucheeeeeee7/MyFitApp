@@ -17,7 +17,8 @@ export function useAuth() {
     queryFn: () => authAPI.me().then(res => res.data),
     retry: false,
     enabled: !!localStorage.getItem('access_token'), // トークンがある場合のみ実行
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 30, // 30分間はキャッシュを使用
+    gcTime: 1000 * 60 * 60 * 24, // 24時間キャッシュを保持
   });
 
   // useEffectでクエリ結果を処理

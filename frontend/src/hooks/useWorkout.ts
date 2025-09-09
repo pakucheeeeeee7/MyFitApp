@@ -46,6 +46,15 @@ export function useWorkout(workoutDate?: string) {
     },
   });
 
+  // ワークアウト種目削除
+  const deleteWorkoutExerciseMutation = useMutation({
+    mutationFn: (workoutExerciseId: number) => workoutDetailAPI.deleteWorkoutExercise(workoutExerciseId),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['workout', 'date', targetDate] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   // ワークアウト完了
   const completeWorkoutMutation = useMutation({
     mutationFn: (workoutId: number) => workoutDetailAPI.completeWorkout(workoutId),
@@ -72,8 +81,10 @@ export function useWorkout(workoutDate?: string) {
     isLoading,
     startTodayWorkout,
     addExercise: addExerciseMutation.mutateAsync,
+    deleteWorkoutExercise: deleteWorkoutExerciseMutation.mutateAsync,
     isCreating: createWorkoutMutation.isPending,
     isAddingExercise: addExerciseMutation.isPending,
+    isDeletingExercise: deleteWorkoutExerciseMutation.isPending,
     completeWorkout: completeWorkoutMutation.mutateAsync,
     isCompleting: completeWorkoutMutation.isPending,
   };

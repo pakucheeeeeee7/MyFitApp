@@ -67,11 +67,12 @@ export default function Login() {
         <CardContent>
           {/* ログインフォーム */}
           {!isSignup && (
-            <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+            <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">
               <div>
                 <Input
                   type="email"
                   placeholder="メールアドレス"
+                  autoComplete="email"
                   {...loginForm.register('email')}
                 />
                 {loginForm.formState.errors.email && (
@@ -85,6 +86,7 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="パスワード"
+                  autoComplete="current-password"
                   {...loginForm.register('password')}
                 />
                 {loginForm.formState.errors.password && (
@@ -112,11 +114,12 @@ export default function Login() {
 
           {/* サインアップフォーム */}
           {isSignup && (
-            <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
+            <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4" autoComplete="on">
               <div>
                 <Input
                   type="email"
                   placeholder="メールアドレス"
+                  autoComplete="email"
                   {...signupForm.register('email')}
                 />
                 {signupForm.formState.errors.email && (
@@ -130,6 +133,7 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="パスワード"
+                  autoComplete="new-password"
                   {...signupForm.register('password')}
                 />
                 {signupForm.formState.errors.password && (
@@ -143,6 +147,7 @@ export default function Login() {
                 <Input
                   type="password"
                   placeholder="パスワード確認"
+                  autoComplete="new-password"
                   {...signupForm.register('confirmPassword')}
                 />
                 {signupForm.formState.errors.confirmPassword && (

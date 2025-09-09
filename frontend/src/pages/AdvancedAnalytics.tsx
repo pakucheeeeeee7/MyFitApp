@@ -4,9 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
+import { Layout } from '../components/layout/Layout';
 import { 
   Loader2, 
-  ArrowLeft, 
   BarChart3, 
   Heart, 
   Target, 

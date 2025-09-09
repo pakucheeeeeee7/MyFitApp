@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkout } from '../hooks/useWorkout';
 import { ExerciseSelector } from '../components/workout/ExerciseSelector';
 import { WorkoutExerciseCard } from '../components/workout/WorkoutExerciseCard';
+import { Layout } from '../components/layout/Layout';
 import type { Exercise, WorkoutExercise } from '../types/workout';
 
 export default function Workout() {
@@ -66,28 +67,23 @@ export default function Workout() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-lg text-gray-600">読み込み中...</div>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* ヘッダー */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">ワークアウト</h1>
-            <p className="text-gray-600">{formatSelectedDate(selectedDate)}</p>
-          </div>
-          <Button 
-            variant="outline"
-            onClick={() => navigate('/dashboard')}
-          >
-            ダッシュボードに戻る
-          </Button>
+    <Layout>
+      {/* ページタイトル */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">ワークアウト</h1>
+          <p className="text-sm text-gray-600 mt-1">{formatSelectedDate(selectedDate)}</p>
         </div>
+      </div>
 
         {/* ワークアウト未開始時 */}
         {!todayWorkout && (
@@ -208,7 +204,6 @@ export default function Workout() {
           onClose={() => setShowExerciseSelector(false)}
           onSelectExercise={handleAddExercise}
         />
-      </div>
-    </div>
+    </Layout>
   );
 }

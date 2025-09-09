@@ -47,7 +47,6 @@ export function DashboardSettingsModal({ isOpen, onClose }: DashboardSettingsMod
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-sm flex items-center gap-2">
-                          <span>{widget.icon}</span>
                           {widget.title}
                         </CardTitle>
                         <Button
@@ -96,7 +95,6 @@ export function DashboardSettingsModal({ isOpen, onClose }: DashboardSettingsMod
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-sm flex items-center gap-2">
-                              <span>{widget.icon}</span>
                               {widget.title}
                             </CardTitle>
                             <div className="flex items-center gap-2">

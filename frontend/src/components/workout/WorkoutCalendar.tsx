@@ -45,11 +45,12 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
     // 当月の日付を追加
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentYear, currentMonth, day);
+      const targetDateString = date.toISOString().split('T')[0];
+      
       const dayWorkouts = workouts.filter(workout => {
-        const workoutDate = new Date(workout.date);
-        // 日付文字列を正規化して比較（時刻を除く）
-        const workoutDateString = workoutDate.toISOString().split('T')[0];
-        const targetDateString = new Date(currentYear, currentMonth, day).toISOString().split('T')[0];
+        if (!workout.date) return false;
+        
+        const workoutDateString = new Date(workout.date).toISOString().split('T')[0];
         return workoutDateString === targetDateString;
       });
 
@@ -61,8 +62,12 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
       });
     }
 
-    // 次月の日付を追加（カレンダーを42日で埋める）
-    const remainingDays = 42 - days.length;
+    // 次月の日付を追加（完全な週を作るために必要な分のみ）
+    const totalCells = days.length;
+    const weeksNeeded = Math.ceil(totalCells / 7);
+    const targetCells = weeksNeeded * 7;
+    const remainingDays = targetCells - totalCells;
+    
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(currentYear, currentMonth + 1, day);
       days.push({
@@ -87,6 +92,7 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
     while (true) {
       const currentDateString = currentDate.toISOString().split('T')[0];
       const hasWorkoutOnDate = workouts.some(workout => {
+        if (!workout.date) return false;
         const workoutDateString = new Date(workout.date).toISOString().split('T')[0];
         return workoutDateString === currentDateString;
       });
@@ -104,12 +110,15 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
   };
 
   const handleDayClick = (day: CalendarDay) => {
-    if (!day.isCurrentMonth || !day.hasWorkout) return;
+    if (!day.isCurrentMonth) return;
     
-    // 選択した日付とワークアウトをモーダルに表示
-    setSelectedDate(day.date.toISOString().split('T')[0]);
-    setSelectedWorkouts(day.workouts);
-    setIsModalOpen(true);
+    // ワークアウトがある場合はモーダルを表示
+    if (day.hasWorkout && day.workouts.length > 0) {
+      setSelectedDate(day.date.toISOString().split('T')[0]);
+      setSelectedWorkouts(day.workouts);
+      setIsModalOpen(true);
+    }
+    // ワークアウトがない場合は何もしない（将来的に新しいワークアウト作成などに使用可能）
   };
 
   const handleCloseModal = () => {
@@ -144,37 +153,40 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
           const isToday = today.toDateString() === day.date.toDateString();
           const consecutiveDays = day.hasWorkout ? getConsecutiveDays(day.date) : 0;
           
-          // 連続日数に応じて背景色を変える（マス全体）
-          const getWorkoutBgStyle = () => {
-            if (!day.hasWorkout) return 'bg-white';
-            if (consecutiveDays >= 7) return 'bg-green-500'; // 1週間以上：濃い緑
-            if (consecutiveDays >= 3) return 'bg-green-400'; // 3日以上：中間
-            return 'bg-green-300'; // 1-2日：薄い緑
-          };
-          
-          const getTextStyle = () => {
-            if (!day.hasWorkout) {
-              return isToday ? 'font-bold text-blue-700' : 'text-gray-900';
+          // 連続日数に応じてスタイルを決定
+          const getDayStyle = () => {
+            let baseStyle = 'h-12 border border-gray-200 flex flex-col items-center justify-center text-xs transition-all relative ';
+            
+            if (!day.isCurrentMonth) {
+              return baseStyle + 'bg-gray-50 text-gray-400 cursor-default';
             }
-            // ワークアウト実施日は白文字で太字
-            return 'font-bold text-white';
+            
+            if (day.hasWorkout) {
+              baseStyle += 'cursor-pointer '; // ワークアウトがある日はクリック可能
+              if (consecutiveDays >= 7) {
+                return baseStyle + 'bg-green-500 text-white font-bold hover:bg-green-600'; // 1週間以上：濃い緑
+              } else if (consecutiveDays >= 3) {
+                return baseStyle + 'bg-green-400 text-white font-bold hover:bg-green-500'; // 3-6日：中間
+              } else {
+                return baseStyle + 'bg-green-300 text-white font-bold hover:bg-green-400'; // 1-2日：薄い緑
+              }
+            } else {
+              baseStyle += 'cursor-default '; // ワークアウトがない日は通常のカーソル
+              if (isToday) {
+                return baseStyle + 'bg-blue-50 border-blue-500 border-2 text-blue-700 font-bold hover:bg-blue-100';
+              } else {
+                return baseStyle + 'bg-white text-gray-700 hover:bg-gray-50';
+              }
+            }
           };
           
           return (
             <div
               key={index}
               onClick={() => handleDayClick(day)}
-              className={`
-                h-12 border border-gray-200 flex flex-col items-center justify-center text-xs transition-colors relative
-                ${day.isCurrentMonth ? getWorkoutBgStyle() : 'bg-gray-50 text-gray-400'}
-                ${day.hasWorkout ? 'cursor-pointer hover:brightness-110' : ''}
-                ${isToday ? 'ring-2 ring-blue-500' : ''}
-              `}
+              className={getDayStyle()}
             >
-              <span className={`
-                text-sm
-                ${day.isCurrentMonth ? getTextStyle() : 'text-gray-400'}
-              `}>
+              <span className="text-sm">
                 {day.date.getDate()}
               </span>
             </div>
