@@ -11,10 +11,8 @@ import { Textarea } from '../components/ui/textarea';
 import { Layout } from '../components/layout/Layout';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2, Scale, TrendingUp, Calendar, NotebookPen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 const BodyMetricsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { metrics, isLoading, createMetric, isCreating } = useBodyMetricsForm();
   const [showForm, setShowForm] = useState(false);
   
@@ -91,18 +89,19 @@ const BodyMetricsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* ナビゲーションヘッダー */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          ダッシュボードに戻る
-        </Button>
-        <div className="flex space-x-2">
+    <Layout>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
+            <Scale className="h-8 w-8" />
+            体重・体脂肪率記録
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            定期的な記録で健康管理とトレーニング効果を可視化
+          </p>
+        </div>
+
+        <div className="flex justify-center">
           <Button
             onClick={() => setShowForm(!showForm)}
             variant={showForm ? "outline" : "default"}
@@ -112,17 +111,6 @@ const BodyMetricsPage: React.FC = () => {
             {showForm ? '入力フォームを閉じる' : '体重を記録'}
           </Button>
         </div>
-      </div>
-
-      <div className="text-center">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <Scale className="h-8 w-8" />
-          体重・体脂肪率記録
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          定期的な記録で健康管理とトレーニング効果を可視化
-        </p>
-      </div>
 
       {/* 新規記録フォーム */}
       {showForm && (
@@ -379,7 +367,8 @@ const BodyMetricsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

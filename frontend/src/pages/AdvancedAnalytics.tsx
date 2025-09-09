@@ -1,7 +1,6 @@
 import React from 'react';
 import { useAdvancedAnalyticsWithCalculations } from '../hooks/useAdvancedAnalytics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { Layout } from '../components/layout/Layout';
@@ -16,10 +15,8 @@ import {
   Zap,
   Scale
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 const AdvancedAnalyticsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { analytics, isLoading, error, calculations } = useAdvancedAnalyticsWithCalculations();
 
   if (isLoading) {
@@ -40,14 +37,9 @@ const AdvancedAnalyticsPage: React.FC = () => {
           <p className="text-muted-foreground mb-4">
             高度分析を行うには、プロフィール設定・身長記録・体重記録が必要です。
           </p>
-          <div className="space-x-2">
-            <Button onClick={() => navigate('/profile')} variant="outline">
-              プロフィール・身長設定
-            </Button>
-            <Button onClick={() => navigate('/body-metrics')}>
-              体重を記録
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            ヘッダーメニューから「プロフィール」や「体重記録」にアクセスできます。
+          </p>
         </div>
       </div>
     );
@@ -58,44 +50,17 @@ const AdvancedAnalyticsPage: React.FC = () => {
   const bmiColor = calculations.getBMIColor(analytics.latest_bmi);
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      {/* ナビゲーションヘッダー */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          ダッシュボードに戻る
-        </Button>
-        <div className="flex space-x-2">
-          <Button
-            onClick={() => navigate('/profile')}
-            variant="outline"
-            size="sm"
-          >
-            プロフィール更新
-          </Button>
-          <Button
-            onClick={() => navigate('/body-metrics')}
-            variant="outline"
-            size="sm"
-          >
-            体重記録追加
-          </Button>
+    <Layout>
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
+            <BarChart3 className="h-8 w-8" />
+            高度分析ダッシュボード
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            年齢・性別・体重データに基づく科学的分析結果
+          </p>
         </div>
-      </div>
-
-      <div className="text-center">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <BarChart3 className="h-8 w-8" />
-          高度分析ダッシュボード
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          年齢・性別・体重データに基づく科学的分析結果
-        </p>
-      </div>
 
       {/* 基本指標カード */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -327,7 +292,8 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
