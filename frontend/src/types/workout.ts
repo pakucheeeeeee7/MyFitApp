@@ -45,6 +45,36 @@ export interface DashboardStats {
   this_week_workouts: number;
   total_volume: number;
   this_week_volume: number;
+  this_week_calories_burned: number;
+  today_calories_burned: number;
+  today_total_estimated_calories: number;
+  weight_change_since_last: number | null;
+  latest_weight: number | null;
+  user_age: number | null;
+  user_gender: string | null;
+}
+
+export interface CalorieGoal {
+  daily_goal: number | null;
+  weekly_goal: number | null;
+  goal_type: string;
+  message?: string;
+}
+
+export interface DashboardWidget {
+  id: string;
+  title: string;
+  description: string;
+  category: 'fitness' | 'health' | 'progress';
+  enabled: boolean;
+  getValue: (stats: DashboardStats, calorieGoal?: CalorieGoal) => string | number | null;
+  format: 'number' | 'decimal' | 'weight' | 'calories' | 'percentage';
+  icon?: string;
+}
+
+export interface DashboardConfig {
+  selectedWidgets: string[];
+  maxWidgets: number;
 }
 
 // API用の型定義

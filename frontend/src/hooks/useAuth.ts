@@ -1,6 +1,7 @@
+// 認証フック - ユーザー認証とダッシュボード設定の管理
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
-import { authAPI } from '../lib/api';
+import { authAPI, userSettingsAPI } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import type { LoginFormData, SignupFormData } from '../lib/schemas';
 import { useEffect } from 'react';
@@ -35,12 +36,30 @@ export function useAuth() {
     mutationFn: ({ email, password }: LoginFormData) => {
       return authAPI.login(email, password);
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       // JWTトークンをlocalStorageに保存
       localStorage.setItem('access_token', response.data.access_token);
       
       setUser(response.data.user);
       queryClient.invalidateQueries({ queryKey: ['auth'] });
+      
+      // ダッシュボード設定を同期
+      try {
+        const settingsResponse = await userSettingsAPI.getSettings();
+        if (settingsResponse.data.dashboard_config) {
+          // サーバーの設定をlocalStorageにも保存（フォールバック用）
+          localStorage.setItem('dashboard-config', JSON.stringify(settingsResponse.data.dashboard_config));
+          
+          // カスタムイベントを発火してダッシュボード設定を更新
+          const event = new CustomEvent('dashboard-config-change', { 
+            detail: settingsResponse.data.dashboard_config 
+          });
+          window.dispatchEvent(event);
+        }
+      } catch (settingsError) {
+        console.error('Failed to sync dashboard settings:', settingsError);
+      }
+      
       navigate('/dashboard');
     },
   });
@@ -62,10 +81,12 @@ export function useAuth() {
 
   // ログアウト
   const logoutMutation = useMutation({
-    mutationFn: authAPI.logout,
+    mutationFn: () => authAPI.logout(),
     onSuccess: () => {
       // JWTトークンを削除
       localStorage.removeItem('access_token');
+      // ダッシュボード設定もクリア（次回ログイン時にサーバーから取得）
+      localStorage.removeItem('dashboard-config');
       logoutStore();
       queryClient.clear();
       navigate('/login');

@@ -6,6 +6,7 @@ from sqlalchemy import Date
 from sqlalchemy.sql import func
 import models
 import schemas  
+import json
 from database import engine, get_db
 from schemas import UserCreate, UserLogin, UserResponse, Token
 from auth import verify_password, get_password_hash, create_access_token, verify_token
@@ -1158,6 +1159,105 @@ async def get_advanced_body_analytics_summary(
 
 # 既存のコードの最後に以下を追加
 
+# カロリー計算のヘルパー関数
+def _calculate_total_calories_burned(db: Session, user_id: int, weight_kg: float) -> float:
+    """ユーザーの全ワークアウトの消費カロリーを計算"""
+    total_calories = 0
+    
+    # 完了済みワークアウトを取得
+    workouts = db.query(models.Workout).filter(
+        models.Workout.user_id == user_id,
+        models.Workout.is_completed == True
+    ).all()
+    
+    for workout in workouts:
+        total_calories += _calculate_workout_calories(db, workout.id, weight_kg)
+    
+    return total_calories
+
+def _calculate_weekly_calories_burned(db: Session, user_id: int, weight_kg: float, week_start) -> float:
+    """今週の消費カロリーを計算"""
+    total_calories = 0
+    
+    # 今週の完了済みワークアウトを取得
+    workouts = db.query(models.Workout).filter(
+        models.Workout.user_id == user_id,
+        models.Workout.date >= week_start,
+        models.Workout.is_completed == True
+    ).all()
+    
+    for workout in workouts:
+        total_calories += _calculate_workout_calories(db, workout.id, weight_kg)
+    
+    return total_calories
+
+def _calculate_daily_calories_burned(db: Session, user_id: int, weight_kg: float, target_date) -> float:
+    """指定日の消費カロリーを計算"""
+    from datetime import timedelta
+    
+    total_calories = 0
+    
+    # 指定日の完了済みワークアウトを取得
+    workouts = db.query(models.Workout).filter(
+        models.Workout.user_id == user_id,
+        models.Workout.date >= target_date,
+        models.Workout.date < target_date + timedelta(days=1),
+        models.Workout.is_completed == True
+    ).all()
+    
+    for workout in workouts:
+        total_calories += _calculate_workout_calories(db, workout.id, weight_kg)
+    
+    return total_calories
+
+def _calculate_workout_calories(db: Session, workout_id: int, weight_kg: float) -> float:
+    """単一ワークアウトの消費カロリーを計算"""
+    total_calories = 0
+    
+    # ワークアウトの全セットを取得
+    sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Exercise).filter(
+        models.WorkoutExercise.workout_id == workout_id,
+        models.Set.is_warmup == False  # ウォームアップは除外
+    ).all()
+    
+    # METs値による消費カロリー計算
+    for set_data in sets:
+        exercise = set_data.workout_exercise.exercise
+        calories = 0
+        
+        if exercise.exercise_type == 'strength':
+            # 筋力トレーニング: 6 METs, 1セット約2分と仮定
+            duration_hours = 2 / 60  # 2分 = 0.033時間
+            mets = 6.0
+            calories = duration_hours * mets * weight_kg
+            
+        elif exercise.exercise_type == 'cardio':
+            # 有酸素運動: 時間が記録されている場合はそれを使用
+            if set_data.duration_seconds:
+                duration_hours = set_data.duration_seconds / 3600
+                # 有酸素運動の強度に応じたMETs（心拍数ベース推定）
+                if set_data.avg_heart_rate:
+                    # 心拍数からMETs推定（簡易計算）
+                    if set_data.avg_heart_rate < 120:
+                        mets = 3.5  # 軽度
+                    elif set_data.avg_heart_rate < 150:
+                        mets = 6.0  # 中度
+                    else:
+                        mets = 8.0  # 高強度
+                else:
+                    mets = 5.0  # デフォルト中程度
+                
+                calories = duration_hours * mets * weight_kg
+            else:
+                # 時間が記録されていない場合は10分と仮定
+                duration_hours = 10 / 60
+                mets = 5.0
+                calories = duration_hours * mets * weight_kg
+        
+        total_calories += calories
+    
+    return total_calories
+
 # ダッシュボード関連エンドポイント
 @app.get("/dashboard/stats")
 async def get_dashboard_stats(
@@ -1165,7 +1265,7 @@ async def get_dashboard_stats(
     db: Session = Depends(get_db)
 ):
     """ダッシュボード統計データを取得"""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, date
     
     # 今週の開始日を計算（月曜日）
     today = datetime.now().date()
@@ -1210,11 +1310,148 @@ async def get_dashboard_stats(
     
     this_week_volume = sum(set_data.weight * set_data.reps for set_data in this_week_sets if set_data.weight and set_data.reps)
     
+    # 消費カロリー計算のための準備
+    this_week_calories_burned = 0
+    today_calories_burned = 0
+    today_total_estimated_calories = 0
+    
+    # ユーザーの体重とプロフィール取得
+    latest_weight_record = db.query(models.BodyMetric).filter(
+        models.BodyMetric.user_id == current_user.id,
+        models.BodyMetric.body_weight.isnot(None)
+    ).order_by(models.BodyMetric.date.desc()).first()
+    
+    user_weight = latest_weight_record.body_weight if latest_weight_record else None
+    
+    # 年齢と身長計算
+    age = None
+    latest_height_record = db.query(models.HeightRecord).filter(
+        models.HeightRecord.user_id == current_user.id
+    ).order_by(models.HeightRecord.date.desc()).first()
+    
+    user_height = latest_height_record.height_cm if latest_height_record else None
+    
+    if current_user.birth_date:
+        today_date = date.today()
+        age = today_date.year - current_user.birth_date.year
+        if today_date.month < current_user.birth_date.month or \
+           (today_date.month == current_user.birth_date.month and today_date.day < current_user.birth_date.day):
+            age -= 1
+    
+    # 消費カロリー計算（体重データがある場合のみ）
+    if user_weight:
+        # 今週のワークアウトの消費カロリー
+        this_week_calories_burned = _calculate_weekly_calories_burned(db, current_user.id, user_weight, week_start)
+        
+        # 今日のワークアウトの消費カロリー
+        today_calories_burned = _calculate_daily_calories_burned(db, current_user.id, user_weight, today)
+        
+        # 今日の総消費カロリー推定値（BMR + ワークアウト + 日常活動）
+        if user_height and age and current_user.gender:
+            # BMR計算（Mifflin-St Jeor式）
+            if current_user.gender == "male":
+                bmr = 10 * user_weight + 6.25 * user_height - 5 * age + 5
+            else:  # female
+                bmr = 10 * user_weight + 6.25 * user_height - 5 * age - 161
+            
+            # 日常活動による消費（軽い活動レベル：BMR × 1.375 - BMR = BMR × 0.375）
+            daily_activity_calories = bmr * 0.375
+            
+            # 今日の総消費カロリー = BMR + 日常活動 + ワークアウト
+            today_total_estimated_calories = bmr + daily_activity_calories + today_calories_burned
+    
+    # 前回計測日からの体重変化
+    weight_change_since_last = None
+    if latest_weight_record:
+        # 前回の記録を取得
+        previous_weight_record = db.query(models.BodyMetric).filter(
+            models.BodyMetric.user_id == current_user.id,
+            models.BodyMetric.body_weight.isnot(None),
+            models.BodyMetric.id != latest_weight_record.id
+        ).order_by(models.BodyMetric.date.desc()).first()
+        
+        if previous_weight_record:
+            weight_change_since_last = round(latest_weight_record.body_weight - previous_weight_record.body_weight, 1)
+    
     return {
         "total_workouts": total_workouts,
         "this_week_workouts": this_week_workouts,
         "total_volume": round(total_volume, 1),
-        "this_week_volume": round(this_week_volume, 1)
+        "this_week_volume": round(this_week_volume, 1),
+        "this_week_calories_burned": round(this_week_calories_burned, 0) if this_week_calories_burned else 0,
+        "today_calories_burned": round(today_calories_burned, 0) if today_calories_burned else 0,
+        "today_total_estimated_calories": round(today_total_estimated_calories, 0) if today_total_estimated_calories else 0,
+        "weight_change_since_last": weight_change_since_last,
+        "latest_weight": user_weight,
+        "user_age": age,
+        "user_gender": current_user.gender
+    }
+
+# 目標設定関連エンドポイント
+@app.get("/dashboard/calorie-goal")
+async def get_calorie_goal(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """ユーザーの消費カロリー目標を取得"""
+    # 現在は簡易的な実装（後でデータベースに保存するように拡張可能）
+    # BMRベースの推奨カロリー目標を計算
+    
+    # 最新の体重と身長を取得
+    latest_weight_record = db.query(models.BodyMetric).filter(
+        models.BodyMetric.user_id == current_user.id,
+        models.BodyMetric.body_weight.isnot(None)
+    ).order_by(models.BodyMetric.date.desc()).first()
+    
+    latest_height_record = db.query(models.HeightRecord).filter(
+        models.HeightRecord.user_id == current_user.id
+    ).order_by(models.HeightRecord.date.desc()).first()
+    
+    if not latest_weight_record or not latest_height_record:
+        return {
+            "daily_goal": None,
+            "weekly_goal": None,
+            "goal_type": "none",
+            "message": "体重と身長の記録が必要です"
+        }
+    
+    weight = latest_weight_record.body_weight
+    height = latest_height_record.height_cm
+    
+    # 年齢計算
+    from datetime import date
+    age = None
+    if current_user.birth_date:
+        today = date.today()
+        age = today.year - current_user.birth_date.year
+        if today.month < current_user.birth_date.month or \
+           (today.month == current_user.birth_date.month and today.day < current_user.birth_date.day):
+            age -= 1
+    
+    if not age or not current_user.gender:
+        return {
+            "daily_goal": None,
+            "weekly_goal": None,
+            "goal_type": "none",
+            "message": "年齢と性別の設定が必要です"
+        }
+    
+    # BMR計算（Mifflin-St Jeor式）
+    if current_user.gender == "male":
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5
+    else:  # female
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161
+    
+    # 活動レベルに応じた推奨カロリー目標
+    # 軽い運動レベル（週3回程度のワークアウト）を想定
+    daily_calorie_goal = round(bmr * 0.15, 0)  # BMRの15%を運動で消費する目標
+    weekly_calorie_goal = daily_calorie_goal * 7
+    
+    return {
+        "daily_goal": daily_calorie_goal,
+        "weekly_goal": weekly_calorie_goal,
+        "goal_type": "auto_calculated",
+        "message": f"BMRベースの推奨目標です（BMR: {round(bmr, 0)}kcal）"
     }
 
 # filepath: [main.py](http://_vscodecontentref_/1)
@@ -1263,6 +1500,84 @@ async def complete_workout(
     db.refresh(workout)
     
     return {"message": "ワークアウトが完了しました", "workout_id": workout_id}
+
+# ユーザー設定関連エンドポイント
+@app.get("/settings", response_model=schemas.UserSettingsResponse)
+def get_user_settings(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """ユーザー設定を取得"""
+    settings = db.query(models.UserSettings).filter(
+        models.UserSettings.user_id == current_user.id
+    ).first()
+    
+    if not settings:
+        # 設定が存在しない場合はデフォルト設定を作成
+        default_dashboard_config = {
+            "selectedWidgets": ["total_workouts", "this_week_workouts", "total_volume", "this_week_volume"],
+            "maxWidgets": 4
+        }
+        settings = models.UserSettings(
+            user_id=current_user.id,
+            dashboard_config=json.dumps(default_dashboard_config)
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    
+    # JSON文字列をパース
+    dashboard_config = None
+    if settings.dashboard_config:
+        try:
+            dashboard_config = json.loads(settings.dashboard_config)
+        except json.JSONDecodeError:
+            dashboard_config = None
+    
+    return schemas.UserSettingsResponse(
+        id=settings.id,
+        user_id=settings.user_id,
+        dashboard_config=dashboard_config,
+        created_at=settings.created_at,
+        updated_at=settings.updated_at
+    )
+
+@app.put("/settings/dashboard", response_model=schemas.UserSettingsResponse)
+def update_dashboard_settings(
+    dashboard_config: schemas.DashboardConfigCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """ダッシュボード設定を更新"""
+    settings = db.query(models.UserSettings).filter(
+        models.UserSettings.user_id == current_user.id
+    ).first()
+    
+    if not settings:
+        # 設定が存在しない場合は新規作成
+        settings = models.UserSettings(
+            user_id=current_user.id,
+            dashboard_config=json.dumps(dashboard_config.dict())
+        )
+        db.add(settings)
+    else:
+        # 既存設定を更新
+        settings.dashboard_config = json.dumps(dashboard_config.dict())
+        settings.updated_at = func.now()
+    
+    db.commit()
+    db.refresh(settings)
+    
+    # レスポンス用にパース
+    dashboard_config_dict = json.loads(settings.dashboard_config)
+    
+    return schemas.UserSettingsResponse(
+        id=settings.id,
+        user_id=settings.user_id,
+        dashboard_config=dashboard_config_dict,
+        created_at=settings.created_at,
+        updated_at=settings.updated_at
+    )
 
 if __name__ == "__main__":
     import uvicorn

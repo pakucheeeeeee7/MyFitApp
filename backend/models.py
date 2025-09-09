@@ -20,6 +20,7 @@ class User(Base):
     workouts = relationship("Workout", back_populates="user")
     body_metrics = relationship("BodyMetric", back_populates="user")
     height_records = relationship("HeightRecord", back_populates="user")
+    settings = relationship("UserSettings", back_populates="user", uselist=False)
 
 class Exercise(Base):
     __tablename__ = "exercises"
@@ -111,3 +112,15 @@ class HeightRecord(Base):
     
     # リレーション
     user = relationship("User", back_populates="height_records")
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    dashboard_config = Column(Text, nullable=True)  # JSON文字列として保存
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # リレーション
+    user = relationship("User", back_populates="settings")

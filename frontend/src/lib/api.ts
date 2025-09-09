@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { User, AuthResponse } from '../types/auth';
-import type { Workout, DashboardStats, Exercise } from '../types/workout';
+import type { Workout, DashboardStats, Exercise, DashboardConfig } from '../types/workout';
 import type { 
   UserProfile, 
   ProfileUpdateRequest, 
@@ -54,6 +54,14 @@ export const dashboardAPI = {
   
   getRecentWorkouts: (limit: number = 5) =>
     api.get<Workout[]>(`/workouts/recent?limit=${limit}`),
+  
+  getCalorieGoal: () =>
+    api.get<{
+      daily_goal: number | null;
+      weekly_goal: number | null;
+      goal_type: string;
+      message?: string;
+    }>('/dashboard/calorie-goal'),
 };
 
 // ワークアウトAPI関数
@@ -150,4 +158,21 @@ export const heightRecordsAPI = {
 export const advancedAnalyticsAPI = {
   getAdvancedSummary: () =>
     api.get<AdvancedAnalytics>('/analytics/body/advanced-summary'),
+};
+
+// ユーザー設定API
+export interface UserSettings {
+  id: number;
+  user_id: number;
+  dashboard_config: DashboardConfig | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const userSettingsAPI = {
+  getSettings: () =>
+    api.get<UserSettings>('/settings'),
+  
+  updateDashboardConfig: (config: DashboardConfig) =>
+    api.put<UserSettings>('/settings/dashboard', config),
 };

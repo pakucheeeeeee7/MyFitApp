@@ -17,6 +17,17 @@ export function useDashboard(options: UseDashboardOptions = {}) {
     staleTime: 1000 * 60 * 5,
   });
 
+  // カロリー目標を取得
+  const {
+    data: calorieGoal,
+    isLoading: isCalorieGoalLoading,
+    error: calorieGoalError,
+  } = useQuery({
+    queryKey: ['dashboard', 'calorie-goal'],
+    queryFn: () => dashboardAPI.getCalorieGoal().then(res => res.data),
+    staleTime: 1000 * 60 * 10, // 10分間キャッシュ
+  });
+
   // 最近のワークアウトを取得
   const {
     data: recentWorkouts,
@@ -52,9 +63,10 @@ export function useDashboard(options: UseDashboardOptions = {}) {
 
   return {
     stats,
-    recentWorkouts: recentWorkouts || [],
-    monthlyWorkouts: monthlyWorkouts || [],
-    isLoading: isStatsLoading || isWorkoutsLoading || isMonthlyLoading,
-    error: statsError || workoutsError || monthlyError,
+    calorieGoal,
+    recentWorkouts,
+    monthlyWorkouts,
+    isLoading: isStatsLoading || isWorkoutsLoading || isMonthlyLoading || isCalorieGoalLoading,
+    error: statsError || workoutsError || monthlyError || calorieGoalError,
   };
 }

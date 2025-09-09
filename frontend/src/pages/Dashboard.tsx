@@ -5,12 +5,18 @@ import { useProfile } from '../hooks/useProfile';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { WorkoutCalendar } from '../components/workout/WorkoutCalendar';
+import { DashboardStatsCards } from '../components/dashboard/DashboardStatsCards';
+import { DashboardSettingsModal } from '../components/dashboard/DashboardSettingsModal';
+import { useDashboardConfig } from '../hooks/useDashboardConfig';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { data: profile } = useProfile();
   const [viewMode, setViewMode] = useViewMode('dashboard-workout-view', 'list');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { config } = useDashboardConfig();
   
   // 現在の月を取得（カレンダー表示用）
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM形式
@@ -123,44 +129,16 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* 統計カード */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>総ワークアウト数</CardDescription>
-              <CardTitle className="text-2xl">
-                {stats?.total_workouts || 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>今週のワークアウト</CardDescription>
-              <CardTitle className="text-2xl">
-                {stats?.this_week_workouts || 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>総トレーニング量</CardDescription>
-              <CardTitle className="text-2xl">
-                {stats?.total_volume || 0}kg
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>今週のトレーニング量</CardDescription>
-              <CardTitle className="text-2xl">
-                {stats?.this_week_volume || 0}kg
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+        {/* ダッシュボード統計カード */}
+        {stats && (
+          <div className="mb-8">
+            <DashboardStatsCards 
+              key={config.selectedWidgets.join(',')} 
+              stats={stats} 
+              onOpenSettings={() => setIsSettingsOpen(true)} 
+            />
+          </div>
+        )}
 
         {/* 最近のワークアウト */}
         <Card>
@@ -258,6 +236,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </main>
+      
+      {/* ダッシュボード設定モーダル */}
+      <DashboardSettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
     </div>
   );
 }

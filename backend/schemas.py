@@ -270,3 +270,22 @@ class AdvancedBodyAnalyticsSummaryResponse(BaseModel):
     # データ統計
     total_records: int
     history: list[AdvancedBodyAnalysisResponse]
+
+# ユーザー設定関連スキーマ
+class DashboardConfigCreate(BaseModel):
+    selectedWidgets: list[str]
+    maxWidgets: int = 4
+
+class DashboardConfigResponse(BaseModel):
+    selectedWidgets: list[str]
+    maxWidgets: int
+    
+class UserSettingsResponse(BaseModel):
+    id: int
+    user_id: int
+    dashboard_config: Optional[DashboardConfigResponse] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
