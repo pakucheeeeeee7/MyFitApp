@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useViewMode('dashboard-workout-view', 'list');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  const { stats, recentWorkouts, monthlyWorkouts, isLoading, error } = useDashboard();
+  const { stats, recentWorkouts, monthlyWorkouts, selectedMonth, setSelectedMonth, isLoading, error } = useDashboard();
 
   if (isLoading) {
     return (
@@ -135,6 +135,8 @@ export default function Dashboard() {
               <WorkoutCalendar 
                 workouts={monthlyWorkouts || []} 
                 onWorkoutClick={(workoutId) => navigate(`/workout-history/${workoutId}`)}
+                selectedMonth={selectedMonth}
+                onMonthChange={setSelectedMonth}
               />
             </CardContent>
           </Card>

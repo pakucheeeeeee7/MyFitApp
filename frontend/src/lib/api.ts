@@ -110,10 +110,15 @@ export const workoutDetailAPI = {
   getWorkout: (workoutId: number) =>
     api.get<Workout>(`/workouts/${workoutId}`),
   
-  addExerciseToWorkout: (workoutId: number, exerciseId: number, orderIndex?: number) =>
+  addExerciseToWorkout: (workoutId: number, exerciseId: number, orderIndex?: number, options?: {
+    selected_angle?: string;
+    selected_grip?: string;
+    selected_stance?: string;
+  }) =>
     api.post(`/workouts/${workoutId}/exercises`, { 
       exercise_id: exerciseId, 
-      order_index: orderIndex || 1 
+      order_index: orderIndex || 1,
+      ...options
     }),
   
   addSetToExercise: (workoutExerciseId: number, setData: {

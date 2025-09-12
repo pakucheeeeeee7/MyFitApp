@@ -4,13 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useExercises } from '../../hooks/useExercises';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ArrowLeft } from 'lucide-react';
 import type { Exercise } from '../../types/workout';
+import { ExerciseOptions } from './ExerciseOptions';
 
 interface ExerciseSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectExercise: (exercise: Exercise) => void;
+  onSelectExercise: (exercise: Exercise, options?: {
+    selected_angle?: string;
+    selected_grip?: string;
+    selected_stance?: string;
+  }) => void;
 }
 
 export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: ExerciseSelectorProps) {
@@ -19,6 +24,14 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
   const [newExerciseName, setNewExerciseName] = useState('');
   const [newExerciseMuscleGroup, setNewExerciseMuscleGroup] = useState('');
   const [newExerciseType, setNewExerciseType] = useState<'strength' | 'cardio'>('strength');
+  
+  // オプション選択用の状態
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<{
+    angle?: string;
+    grip?: string;
+    stance?: string;
+  }>({});
   
   const { exercises, exercisesByMuscleGroup, isLoading, createExercise, isCreating } = useExercises();
 
@@ -38,6 +51,52 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
         console.error('種目の追加に失敗しました:', error);
       }
     }
+  };
+
+  // 種目選択時の処理
+  const handleExerciseClick = (exercise: Exercise) => {
+    // オプションがある種目の場合はオプション選択画面に移行
+    const hasOptions = exercise.angle_options || exercise.grip_options || exercise.stance_options;
+    
+    if (hasOptions) {
+      setSelectedExercise(exercise);
+      setSelectedOptions({});
+    } else {
+      // オプションがない場合は直接選択
+      onSelectExercise(exercise);
+      onClose();
+    }
+  };
+
+  // オプション選択完了時の処理
+  const handleConfirmSelection = () => {
+    if (selectedExercise) {
+      const options = Object.keys(selectedOptions).length > 0 ? {
+        selected_angle: selectedOptions.angle,
+        selected_grip: selectedOptions.grip,
+        selected_stance: selectedOptions.stance,
+      } : undefined;
+      
+      onSelectExercise(selectedExercise, options);
+      setSelectedExercise(null);
+      setSelectedOptions({});
+      onClose();
+    }
+  };
+
+  // オプション選択をキャンセル
+  const handleCancelOptions = () => {
+    setSelectedExercise(null);
+    setSelectedOptions({});
+  };
+
+  // オプション選択表示名を生成
+  const getExerciseDisplayName = (exercise: Exercise) => {
+    const parts = [exercise.name];
+    if (selectedOptions.angle) parts.push(`(${selectedOptions.angle})`);
+    if (selectedOptions.grip) parts.push(`(${selectedOptions.grip})`);
+    if (selectedOptions.stance) parts.push(`(${selectedOptions.stance})`);
+    return parts.join(' ');
   };
 
   const muscleGroups = ['胸', '背中', '脚', '肩', '腕', '腹', '有酸素運動', 'その他'];
@@ -151,59 +210,114 @@ export function ExerciseSelector({ isOpen, onClose, onSelectExercise }: Exercise
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {isLoading ? (
-            <p>読み込み中...</p>
-          ) : (
+          {selectedExercise ? (
+            // オプション選択画面
             <div className="space-y-4">
-              {Object.entries(exercisesByMuscleGroup).map(([muscleGroup, exercises]) => {
-                const filteredGroupExercises = (exercises as Exercise[]).filter((exercise: Exercise) =>
-                  exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                
-                if (filteredGroupExercises.length === 0) return null;
-                
-                return (
-                  <Card key={muscleGroup}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{muscleGroup}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-2">
-                        {filteredGroupExercises.map((exercise: Exercise) => (
-                          <Button
-                            key={exercise.id}
-                            variant="outline"
-                            className="justify-start"
-                            onClick={() => {
-                              onSelectExercise(exercise);
-                              onClose();
-                            }}
-                          >
-                            {exercise.name}
-                            <div className="ml-auto flex gap-1">
-                              {exercise.exercise_type === 'cardio' && (
-                                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                                  有酸素
-                                </span>
-                              )}
-                              {exercise.is_builtin ? (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  内蔵
-                                </span>
-                              ) : (
-                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                  オリジナル
-                                </span>
-                              )}
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              <div className="flex items-center gap-3 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelOptions}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  戻る
+                </Button>
+                <h3 className="text-lg font-semibold">{selectedExercise.name}</h3>
+              </div>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">選択予定:</p>
+                <p className="font-medium">{getExerciseDisplayName(selectedExercise)}</p>
+              </div>
+
+              <ExerciseOptions
+                exercise={selectedExercise}
+                selectedOptions={selectedOptions}
+                onOptionsChange={setSelectedOptions}
+              />
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleConfirmSelection}
+                  className="flex-1"
+                >
+                  この設定で追加
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelOptions}
+                >
+                  キャンセル
+                </Button>
+              </div>
             </div>
+          ) : (
+            // 種目選択リスト
+            <>
+              {isLoading ? (
+                <p>読み込み中...</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(exercisesByMuscleGroup).map(([muscleGroup, exercises]) => {
+                    const filteredGroupExercises = (exercises as Exercise[]).filter((exercise: Exercise) =>
+                      exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    
+                    if (filteredGroupExercises.length === 0) return null;
+                    
+                    return (
+                      <Card key={muscleGroup}>
+                        <CardHeader>
+                          <CardTitle className="text-lg">{muscleGroup}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid gap-2">
+                            {filteredGroupExercises.map((exercise: Exercise) => {
+                              const hasOptions = exercise.angle_options || exercise.grip_options || exercise.stance_options;
+                              
+                              return (
+                                <Button
+                                  key={exercise.id}
+                                  variant="outline"
+                                  className="justify-start"
+                                  onClick={() => handleExerciseClick(exercise)}
+                                >
+                                  <div className="flex-1 text-left">
+                                    {exercise.name}
+                                    {hasOptions && (
+                                      <span className="text-xs text-blue-600 ml-2">
+                                        (オプション選択可)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="ml-auto flex gap-1">
+                                    {exercise.exercise_type === 'cardio' && (
+                                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                                        有酸素
+                                      </span>
+                                    )}
+                                    {exercise.is_builtin ? (
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                        内蔵
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                        オリジナル
+                                      </span>
+                                    )}
+                                  </div>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

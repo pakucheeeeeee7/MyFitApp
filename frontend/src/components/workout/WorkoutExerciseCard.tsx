@@ -5,6 +5,7 @@ import { SetRecord } from './SetRecord';
 import { useSets } from '../../hooks/useSets';
 import { useWorkout } from '../../hooks/useWorkout';
 import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface WorkoutExerciseCardProps {
   workoutExercise: WorkoutExercise;
@@ -14,8 +15,21 @@ export function WorkoutExerciseCard({ workoutExercise }: WorkoutExerciseCardProp
   const { deleteSet, calculateOneRepMax, isDeleting } = useSets();
   const { deleteWorkoutExercise, isDeletingExercise } = useWorkout();
   const { exercise, sets } = workoutExercise;
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const isCardio = exercise.exercise_type === 'cardio';
+
+  const handleDeleteExercise = async () => {
+    try {
+      setIsDeleted(true);
+      await deleteWorkoutExercise(workoutExercise.id);
+      // 成功した場合はそのまま削除状態を維持（楽観的更新により既にUIから削除済み）
+    } catch (error) {
+      // エラーの場合のみリセット
+      setIsDeleted(false);
+      console.error('削除に失敗しました:', error);
+    }
+  };
 
   // 筋力トレーニングの場合のみ最大重量セットを計算
   const maxWeightSet = !isCardio && sets.length > 0 ? sets.reduce((max, set) => 
@@ -33,8 +47,14 @@ export function WorkoutExerciseCard({ workoutExercise }: WorkoutExerciseCardProp
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  if (isDeleted) {
+    return null;
+  }
+
   return (
-    <Card className="mb-4">
+    <Card className={`mb-4 transition-all duration-300 ${
+      isDeletingExercise ? 'opacity-50 pointer-events-none transform scale-95' : ''
+    }`}>
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <div>
@@ -55,11 +75,15 @@ export function WorkoutExerciseCard({ workoutExercise }: WorkoutExerciseCardProp
             <Button
               variant="outline"
               size="sm"
-              onClick={() => deleteWorkoutExercise(workoutExercise.id)}
+              onClick={handleDeleteExercise}
               disabled={isDeletingExercise}
               className="text-red-600 hover:text-red-800"
             >
-              <Trash2 className="h-4 w-4" />
+              {isDeletingExercise ? (
+                <span className="text-xs">削除中...</span>
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </CardTitle>

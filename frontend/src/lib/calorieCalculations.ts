@@ -9,22 +9,22 @@ export interface CalorieCalculationParams {
   exerciseName?: string;
 }
 
-// METs値の参考データ
+// METs値の参考データ（2024 Compendium of Physical Activities準拠）
 const METS_VALUES: Record<string, number> = {
-  // 筋トレ系
-  'ベンチプレス': 6.0,
+  // 筋トレ系 - より現実的な値に調整
+  'ベンチプレス': 3.5,
   'スクワット': 5.0,
-  'デッドリフト': 6.0,
+  'デッドリフト': 5.0,
   'プルアップ': 6.0,
-  'ショルダープレス': 5.0,
-  'バーベルロウ': 5.0,
-  'レッグプレス': 4.0,
-  'チェストフライ': 4.5,
-  'ラットプルダウン': 5.0,
-  'レッグカール': 3.5,
-  'レッグエクステンション': 3.5,
+  'ショルダープレス': 3.5,
+  'バーベルロウ': 3.5,
+  'レッグプレス': 3.5,
+  'チェストフライ': 3.5,
+  'ラットプルダウン': 3.5,
+  'レッグカール': 3.0,
+  'レッグエクステンション': 3.0,
   'ダンベルカール': 3.0,
-  '筋トレ': 5.0, // デフォルト値
+  '筋トレ': 3.5, // デフォルト値（複数エクササイズ、8-15レップス）
 
   // 有酸素系
   'ランニング': 8.0,
@@ -94,25 +94,25 @@ export function calculateCaloriesByDistance(params: CalorieCalculationParams): n
 
 /**
  * 筋トレ用カロリー計算
- * 重量と回数を考慮した計算
+ * 現実的なMETs値と運動時間を使用
  */
 export function calculateStrengthCalories(params: CalorieCalculationParams & {
   totalWeight?: number; // 総重量（kg）
   totalReps?: number; // 総回数
 }): number {
-  const { totalWeight = 0, totalReps = 0 } = params;
+  const { duration = 0 } = params;
   
-  // 基本的なMETsベース計算
-  let baseCalories = calculateCaloriesByMETs(params);
+  // セット間の休憩時間を除いた実際の運動時間を想定
+  // 実際の運動時間は全体の30-40%程度
+  const actualExerciseTime = duration * 0.35;
   
-  // 重量と回数による補正
-  if (totalWeight > 0 && totalReps > 0) {
-    // 高重量・多回数ほど消費カロリーを増加
-    const intensityFactor = Math.min(2.0, 1 + (totalWeight / 1000) + (totalReps / 100));
-    baseCalories = Math.round(baseCalories * intensityFactor);
-  }
+  // 基本的なMETsベース計算（現実的な値）
+  const baseCalories = calculateCaloriesByMETs({
+    ...params,
+    duration: actualExerciseTime
+  });
   
-  return baseCalories;
+  return Math.round(baseCalories);
 }
 
 /**

@@ -32,13 +32,18 @@ export default function Workout() {
   const handleStartWorkout = async () => {
     await startTodayWorkout(workoutNote);
   };
-  const handleAddExercise = async (exercise: Exercise) => {
+  const handleAddExercise = async (exercise: Exercise, options?: {
+    selected_angle?: string;
+    selected_grip?: string;
+    selected_stance?: string;
+  }) => {
     if (todayWorkout) {
       const orderIndex = (todayWorkout.workout_exercises?.length || 0) + 1;
       await addExercise({ 
         workoutId: todayWorkout.id, 
         exerciseId: exercise.id,
-        orderIndex 
+        orderIndex,
+        options
       });
     }
   };

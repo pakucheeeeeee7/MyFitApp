@@ -5,6 +5,27 @@ export interface Exercise {
   exercise_type: 'strength' | 'cardio';
   is_builtin: boolean;
   user_id?: number;
+  // 新しい分類・オプションフィールド
+  category?: string;
+  subcategory?: string;
+  equipment_type?: string;
+  target_muscle?: string;
+  difficulty_level?: string;
+  angle_options?: string;
+  grip_options?: string;
+  stance_options?: string;
+  variation_options?: string;
+  custom_mets_value?: number;
+  description?: string;
+  instructions?: string;
+}
+
+export interface ExerciseVariant {
+  id: number;
+  workout_exercise_id: number;
+  selected_angle?: string;
+  selected_grip?: string;
+  selected_stance?: string;
 }
 
 export interface WorkoutSet {
@@ -29,6 +50,7 @@ export interface WorkoutExercise {
   exercise: Exercise;
   sets: WorkoutSet[];
   order_index: number;
+  exercise_variant?: ExerciseVariant;
 }
 
 export interface Workout {

@@ -36,13 +36,21 @@ export function useWorkout(workoutDate?: string) {
 
   // 種目追加
   const addExerciseMutation = useMutation({
-    mutationFn: ({ workoutId, exerciseId, orderIndex }: { 
+    mutationFn: ({ workoutId, exerciseId, orderIndex, options }: { 
         workoutId: number; 
         exerciseId: number; 
         orderIndex?: number;
-    }) => workoutDetailAPI.addExerciseToWorkout(workoutId, exerciseId, orderIndex),
+        options?: {
+          selected_angle?: string;
+          selected_grip?: string;
+          selected_stance?: string;
+        };
+    }) => workoutDetailAPI.addExerciseToWorkout(workoutId, exerciseId, orderIndex, options),
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['workout', 'date', targetDate] });
+    },
+    onError: (err) => {
+      console.error('種目追加に失敗しました:', err);
     },
   });
 
@@ -50,8 +58,12 @@ export function useWorkout(workoutDate?: string) {
   const deleteWorkoutExerciseMutation = useMutation({
     mutationFn: (workoutExerciseId: number) => workoutDetailAPI.deleteWorkoutExercise(workoutExerciseId),
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['workout', 'date', targetDate] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // 削除後は必ずクエリを無効化してサーバーから最新データを取得
+      queryClient.invalidateQueries({ queryKey: ['workout', 'date', targetDate] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (err) => {
+      console.error('種目削除に失敗しました:', err);
     },
   });
 

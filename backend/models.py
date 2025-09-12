@@ -32,6 +32,26 @@ class Exercise(Base):
     exercise_type = Column(String, nullable=False, default="strength")  # "strength" or "cardio"
     is_builtin = Column(Boolean, default=False)
     
+    # 新しい分類・オプションフィールド
+    category = Column(String, nullable=True)        # "プレス系", "フライ系", "垂直引き" など
+    subcategory = Column(String, nullable=True)     # "バーベル", "ダンベル", "マシン" など
+    equipment_type = Column(String, nullable=True)  # "バーベル", "ダンベル", "マシン", "自重", "ケーブル"
+    target_muscle = Column(String, nullable=True)   # "大胸筋", "上腕三頭筋", "三角筋前部" など詳細な筋肉
+    difficulty_level = Column(String, nullable=True) # "初級", "中級", "上級"
+    
+    # オプション系（JSONまたは区切り文字で複数値保存）
+    angle_options = Column(String, nullable=True)    # "フラット,インクライン,デクライン"
+    grip_options = Column(String, nullable=True)     # "ワイド,ナロー,リバース"
+    stance_options = Column(String, nullable=True)   # "バック,フロント,ボックス"
+    variation_options = Column(String, nullable=True) # その他のバリエーション
+    
+    # カスタム種目用METs値（内蔵種目はコードで定義）
+    custom_mets_value = Column(Float, nullable=True)
+    
+    # メタデータ
+    description = Column(Text, nullable=True)        # 種目の説明
+    instructions = Column(Text, nullable=True)       # 実行方法の説明
+    
     # リレーション
     user = relationship("User", back_populates="exercises")
     workout_exercises = relationship("WorkoutExercise", back_populates="exercise")
@@ -62,6 +82,7 @@ class WorkoutExercise(Base):
     workout = relationship("Workout", back_populates="workout_exercises")
     exercise = relationship("Exercise", back_populates="workout_exercises")
     sets = relationship("Set", back_populates="workout_exercise")
+    exercise_variant = relationship("ExerciseVariant", back_populates="workout_exercise", uselist=False)
 
 class Set(Base):
     __tablename__ = "sets"
@@ -87,6 +108,20 @@ class Set(Base):
     
     # リレーション
     workout_exercise = relationship("WorkoutExercise", back_populates="sets")
+
+class ExerciseVariant(Base):
+    """ワークアウト実行時に選択されたバリエーション（角度、グリップ等）を記録"""
+    __tablename__ = "exercise_variants"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    workout_exercise_id = Column(Integer, ForeignKey("workout_exercises.id"), nullable=False)
+    selected_angle = Column(String, nullable=True)     # "フラット", "インクライン", "デクライン"
+    selected_grip = Column(String, nullable=True)      # "ワイド", "ナロー", "リバース"
+    selected_stance = Column(String, nullable=True)    # "バック", "フロント", "ボックス"
+    selected_variation = Column(String, nullable=True) # その他のバリエーション
+    
+    # リレーション
+    workout_exercise = relationship("WorkoutExercise", back_populates="exercise_variant")
 
 class BodyMetric(Base):
     __tablename__ = "body_metrics"

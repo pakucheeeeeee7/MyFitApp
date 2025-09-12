@@ -264,6 +264,10 @@ async def get_recent_workouts(
             models.Workout.is_completed == True
         ).order_by(models.Workout.date.desc()).limit(limit).all()
         
+        # exerciseがNoneのworkout_exerciseを除外
+        for workout in workouts:
+            workout.workout_exercises = [we for we in workout.workout_exercises if we.exercise is not None]
+        
         return workouts
         
     except Exception as e:
@@ -279,7 +283,12 @@ async def get_workout(
     db: Session = Depends(get_db)
 ):
     """特定のワークアウトを取得（種目情報含む）"""
-    workout = db.query(models.Workout).filter(
+    from sqlalchemy.orm import joinedload
+    
+    workout = db.query(models.Workout).options(
+        joinedload(models.Workout.workout_exercises).joinedload(models.WorkoutExercise.exercise),
+        joinedload(models.Workout.workout_exercises).joinedload(models.WorkoutExercise.sets)
+    ).filter(
         models.Workout.id == workout_id,
         models.Workout.user_id == current_user.id
     ).first()
@@ -289,6 +298,9 @@ async def get_workout(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="ワークアウトが見つかりません"
         )
+    
+    # exerciseがNoneのworkout_exerciseを除外
+    workout.workout_exercises = [we for we in workout.workout_exercises if we.exercise is not None]
     
     return workout
 
@@ -337,6 +349,20 @@ async def add_exercise_to_workout(
     db.add(db_workout_exercise)
     db.commit()
     db.refresh(db_workout_exercise)
+    
+    # オプション選択がある場合はExerciseVariantを作成
+    if (exercise_data.selected_angle or 
+        exercise_data.selected_grip or 
+        exercise_data.selected_stance):
+        db_variant = models.ExerciseVariant(
+            workout_exercise_id=db_workout_exercise.id,
+            selected_angle=exercise_data.selected_angle,
+            selected_grip=exercise_data.selected_grip,
+            selected_stance=exercise_data.selected_stance
+        )
+        db.add(db_variant)
+        db.commit()
+        db.refresh(db_variant)
     
     return db_workout_exercise
 
@@ -474,18 +500,16 @@ async def delete_workout_exercise(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """ワークアウト種目を削除（関連するセットも削除）"""
+    """ワークアウト種目を削除（関連するセットも削除）- 冪等性対応"""
     # ワークアウト種目の確認と所有者チェック
     workout_exercise = db.query(models.WorkoutExercise).join(models.Workout).filter(
         models.WorkoutExercise.id == workout_exercise_id,
         models.Workout.user_id == current_user.id
     ).first()
     
+    # すでに削除済みの場合は成功として扱う（冪等性）
     if not workout_exercise:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="ワークアウト種目が見つかりません"
-        )
+        return  # 204 No Content
     
     # 関連するセットを先に削除
     db.query(models.Set).filter(
@@ -1268,8 +1292,126 @@ def _calculate_daily_calories_burned(db: Session, user_id: int, weight_kg: float
     return total_calories
 
 def _calculate_workout_calories(db: Session, workout_id: int, weight_kg: float) -> float:
-    """単一ワークアウトの消費カロリーを計算"""
+    """単一ワークアウトの消費カロリーを計算（ハイブリッド方式）"""
     total_calories = 0
+    
+    # 包括的な内蔵種目METs値（2024 Compendium of Physical Activities準拠）
+    BUILTIN_EXERCISE_METS = {
+        # 胸 - プレス系
+        'バーベルベンチプレス': 3.5,
+        'ダンベルベンチプレス': 3.5,
+        'スミスマシンベンチプレス': 3.5,
+        'マシンチェストプレス': 3.0,
+        
+        # 胸 - フライ系
+        'ダンベルフライ': 3.0,
+        'ケーブルフライ': 3.0,
+        'ペックデック': 3.0,
+        
+        # 胸 - 自重
+        'プッシュアップ': 3.0,
+        'ディップス': 3.5,
+        
+        # 背中 - 垂直引き
+        'プルアップ': 6.0,
+        'ラットプルダウン': 3.5,
+        
+        # 背中 - 水平引き
+        'バーベルローイング': 3.5,
+        'ダンベルロー': 3.5,
+        'シーテッドロー': 3.5,
+        'Tバーロー': 3.5,
+        'チェストサポートロー': 3.0,
+        
+        # 背中 - その他
+        'デッドリフト': 5.0,
+        'ルーマニアンデッドリフト': 4.5,
+        'グッドモーニング': 4.0,
+        'シュラッグ': 3.0,
+        
+        # 肩 - プレス系
+        'ダンベルショルダープレス': 3.5,
+        'バーベルショルダープレス': 3.5,
+        'アーノルドプレス': 4.0,
+        'スミスマシンショルダープレス': 3.5,
+        
+        # 肩 - レイズ系
+        'サイドレイズ': 3.0,
+        'フロントレイズ': 3.0,
+        'リアレイズ': 3.0,
+        'ケーブルサイドレイズ': 3.0,
+        
+        # 肩 - その他
+        'アップライトロー': 3.5,
+        'フェイスプル': 3.0,
+        
+        # 脚 - 大腿四頭筋
+        'バーベルスクワット': 5.0,
+        'スミスマシンスクワット': 4.5,
+        'レッグプレス': 3.5,
+        'レッグエクステンション': 3.0,
+        
+        # 脚 - ハムストリングス・臀部
+        'ヒップスラスト': 4.0,
+        'グルートブリッジ': 3.5,
+        'レッグカール': 3.0,
+        
+        # 脚 - その他
+        'ランジ': 4.0,
+        'ステップアップ': 3.5,
+        'カーフレイズ': 3.0,
+        
+        # 腕 - 上腕二頭筋
+        'バーベルカール': 3.0,
+        'ダンベルカール': 3.0,
+        'コンセントレーションカール': 3.0,
+        'プリーチャーカール': 3.0,
+        'ケーブルカール': 3.0,
+        
+        # 腕 - 上腕三頭筋
+        'トライセプスプレスダウン': 3.0,
+        'オーバーヘッドエクステンション': 3.0,
+        'フレンチプレス': 3.0,
+        'ナローベンチプレス': 3.5,
+        'キックバック': 3.0,
+        
+        # 体幹・腹筋
+        'クランチ': 3.0,
+        'シットアップ': 3.0,
+        'レッグレイズ': 3.5,
+        'アブローラー': 4.0,
+        'プランク': 3.0,
+        'ロシアンツイスト': 3.5,
+        'ケーブルウッドチョッパー': 3.5,
+        
+        # 前腕・握力
+        'リストカール': 2.5,
+        'リバースリストカール': 2.5,
+        'ハンマーカール': 3.0,
+        'ファーマーズウォーク': 4.0,
+        
+        # 有酸素運動
+        'ランニング': 8.0,
+        'ウォーキング': 3.5,
+        'エアロバイク': 7.0,
+        'クロストレーナー': 5.0,
+        'ローイングマシン': 7.0,
+        'ステアクライマー': 6.0,
+        'サーキットトレーニング': 8.0,
+        'ジャンプロープ': 9.0,
+        'HIIT': 10.0,
+        
+        # 既存の種目（後方互換性）
+        'ベンチプレス': 3.5,
+        'スクワット': 5.0,
+        'ショルダープレス': 3.5,
+        'バーベルロウ': 3.5,
+        'インクラインベンチプレス': 3.5,
+        'サイクリング': 7.0,
+        'エリプティカル': 5.0,
+        '水泳': 8.0,
+        'ローイング': 7.0,
+    }
     
     # ワークアウトの全セットを取得
     sets = db.query(models.Set).join(models.WorkoutExercise).join(models.Exercise).filter(
@@ -1277,38 +1419,57 @@ def _calculate_workout_calories(db: Session, workout_id: int, weight_kg: float) 
         models.Set.is_warmup == False  # ウォームアップは除外
     ).all()
     
-    # METs値による消費カロリー計算
+    # ハイブリッドMETs値による消費カロリー計算
     for set_data in sets:
         exercise = set_data.workout_exercise.exercise
         calories = 0
         
+        # METs値の決定（ハイブリッド方式）
+        def get_exercise_mets(exercise, exercise_type):
+            """種目のMETs値を取得（ハイブリッド方式）"""
+            # 1. カスタム種目でcustom_mets_valueが設定されている場合
+            if exercise.custom_mets_value and exercise.custom_mets_value > 0:
+                return exercise.custom_mets_value
+            
+            # 2. 内蔵種目の場合、科学的根拠に基づく値を使用
+            if exercise.is_builtin and exercise.name in BUILTIN_EXERCISE_METS:
+                return BUILTIN_EXERCISE_METS[exercise.name]
+            
+            # 3. デフォルト値（exercise_typeに基づく）
+            if exercise_type == 'strength':
+                return 3.5  # 筋トレデフォルト
+            elif exercise_type == 'cardio':
+                return 5.0  # 有酸素デフォルト
+            else:
+                return 3.5  # 全体デフォルト
+        
         if exercise.exercise_type == 'strength':
-            # 筋力トレーニング: 6 METs, 1セット約2分と仮定
-            duration_hours = 2 / 60  # 2分 = 0.033時間
-            mets = 6.0
+            # METs値を取得
+            mets = get_exercise_mets(exercise, 'strength')
+            
+            # 筋力トレーニング: 1セット約1分の運動時間（セット間休憩除く）
+            duration_hours = 1 / 60  # 1分 = 0.0167時間
             calories = duration_hours * mets * weight_kg
             
         elif exercise.exercise_type == 'cardio':
+            # METs値を取得
+            mets = get_exercise_mets(exercise, 'cardio')
+            
             # 有酸素運動: 時間が記録されている場合はそれを使用
             if set_data.duration_seconds:
                 duration_hours = set_data.duration_seconds / 3600
-                # 有酸素運動の強度に応じたMETs（心拍数ベース推定）
+                
+                # 心拍数による調整（記録されている場合）
                 if set_data.avg_heart_rate:
-                    # 心拍数からMETs推定（簡易計算）
                     if set_data.avg_heart_rate < 120:
-                        mets = 3.5  # 軽度
-                    elif set_data.avg_heart_rate < 150:
-                        mets = 6.0  # 中度
-                    else:
-                        mets = 8.0  # 高強度
-                else:
-                    mets = 5.0  # デフォルト中程度
+                        mets = mets * 0.7  # 軽度の調整
+                    elif set_data.avg_heart_rate > 150:
+                        mets = mets * 1.3  # 高強度の調整
                 
                 calories = duration_hours * mets * weight_kg
             else:
                 # 時間が記録されていない場合は10分と仮定
                 duration_hours = 10 / 60
-                mets = 5.0
                 calories = duration_hours * mets * weight_kg
         
         total_calories += calories

@@ -34,13 +34,39 @@ class ExerciseBase(BaseModel):
     exercise_type: str = "strength"  # "strength" or "cardio"
 
 class ExerciseCreate(ExerciseBase):
-    pass
+    # 新しいフィールドの追加
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    equipment_type: Optional[str] = None
+    target_muscle: Optional[str] = None
+    difficulty_level: Optional[str] = None
+    angle_options: Optional[str] = None
+    grip_options: Optional[str] = None
+    stance_options: Optional[str] = None
+    variation_options: Optional[str] = None
+    custom_mets_value: Optional[float] = None
+    description: Optional[str] = None
+    instructions: Optional[str] = None
 
 class ExerciseResponse(ExerciseBase):
     id: int
     user_id: Optional[int]
     exercise_type: str
     is_builtin: bool
+    
+    # 新しいフィールドの追加
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    equipment_type: Optional[str] = None
+    target_muscle: Optional[str] = None
+    difficulty_level: Optional[str] = None
+    angle_options: Optional[str] = None
+    grip_options: Optional[str] = None
+    stance_options: Optional[str] = None
+    variation_options: Optional[str] = None
+    custom_mets_value: Optional[float] = None
+    description: Optional[str] = None
+    instructions: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -126,6 +152,21 @@ class SetResponse(BaseModel):
 class WorkoutExerciseCreate(BaseModel):
     exercise_id: int
     order_index: int
+    # オプション選択
+    selected_angle: Optional[str] = None
+    selected_grip: Optional[str] = None
+    selected_stance: Optional[str] = None
+
+# 種目バリエーション（オプション選択）レスポンス
+class ExerciseVariantResponse(BaseModel):
+    id: int
+    workout_exercise_id: int
+    selected_angle: Optional[str] = None
+    selected_grip: Optional[str] = None
+    selected_stance: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 
 class WorkoutExerciseResponse(BaseModel):
     id: int
@@ -134,6 +175,7 @@ class WorkoutExerciseResponse(BaseModel):
     order_index: int
     exercise: ExerciseResponse  # 種目情報も含める
     sets: list[SetResponse] = []  # セット情報も含める
+    exercise_variant: Optional[ExerciseVariantResponse] = None  # オプション選択情報
     
     class Config:
         from_attributes = True

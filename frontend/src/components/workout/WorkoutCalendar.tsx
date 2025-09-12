@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { WorkoutDetailModal } from './WorkoutDetailModal';
+import { Button } from '../ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Workout as WorkoutType } from '../../types/workout';
 
 interface CalendarDay {
@@ -12,16 +14,36 @@ interface CalendarDay {
 interface WorkoutCalendarProps {
   workouts: WorkoutType[];
   onWorkoutClick: (workoutId: number) => void;
+  selectedMonth?: Date;
+  onMonthChange?: (date: Date) => void;
 }
 
-export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarProps) {
+export function WorkoutCalendar({ workouts, onWorkoutClick, selectedMonth, onMonthChange }: WorkoutCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutType[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // 表示する月を管理（親コンポーネントから指定されるか、現在月をデフォルト）
+  const displayMonth = selectedMonth || new Date();
+  const currentMonth = displayMonth.getMonth();
+  const currentYear = displayMonth.getFullYear();
+  
+  // 今日の日付
   const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+
+  // 月を変更する関数
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    if (!onMonthChange) return;
+    
+    const newDate = new Date(currentYear, currentMonth + (direction === 'next' ? 1 : -1), 1);
+    onMonthChange(newDate);
+  };
+
+  // 今月に戻る関数
+  const handleGoToToday = () => {
+    if (!onMonthChange) return;
+    onMonthChange(new Date());
+  };
 
   const calendarDays = useMemo(() => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
@@ -34,11 +56,19 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
     // 前月の日付を追加（カレンダーの空白を埋める）
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const date = new Date(currentYear, currentMonth, -i);
+      const targetDateString = date.toISOString().split('T')[0];
+      
+      const dayWorkouts = workouts.filter(workout => {
+        if (!workout.date) return false;
+        const workoutDateString = new Date(workout.date).toISOString().split('T')[0];
+        return workoutDateString === targetDateString;
+      });
+      
       days.push({
         date,
         isCurrentMonth: false,
-        hasWorkout: false,
-        workouts: [],
+        hasWorkout: dayWorkouts.length > 0,
+        workouts: dayWorkouts,
       });
     }
 
@@ -70,11 +100,19 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
     
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(currentYear, currentMonth + 1, day);
+      const targetDateString = date.toISOString().split('T')[0];
+      
+      const dayWorkouts = workouts.filter(workout => {
+        if (!workout.date) return false;
+        const workoutDateString = new Date(workout.date).toISOString().split('T')[0];
+        return workoutDateString === targetDateString;
+      });
+      
       days.push({
         date,
         isCurrentMonth: false,
-        hasWorkout: false,
-        workouts: [],
+        hasWorkout: dayWorkouts.length > 0,
+        workouts: dayWorkouts,
       });
     }
 
@@ -110,6 +148,13 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
   };
 
   const handleDayClick = (day: CalendarDay) => {
+    // 前月・次月の日付がクリックされた場合、その月に移動
+    if (!day.isCurrentMonth && onMonthChange) {
+      const targetMonth = new Date(day.date.getFullYear(), day.date.getMonth(), 1);
+      onMonthChange(targetMonth);
+      return;
+    }
+    
     if (!day.isCurrentMonth) return;
     
     // ワークアウトがある場合はモーダルを表示
@@ -136,6 +181,49 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
 
   return (
     <div className="w-full">
+      {/* 月ナビゲーション */}
+      {onMonthChange && (
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            onClick={() => handleMonthChange('prev')}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            前の月
+          </Button>
+          
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-semibold">
+              {currentYear}年{currentMonth + 1}月
+            </h3>
+            
+            {/* 今月でない場合は今月に戻るボタンを表示 */}
+            {(currentYear !== today.getFullYear() || currentMonth !== today.getMonth()) && (
+              <Button
+                onClick={handleGoToToday}
+                variant="outline"
+                size="sm"
+              >
+                今月に戻る
+              </Button>
+            )}
+          </div>
+          
+          <Button
+            onClick={() => handleMonthChange('next')}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+            disabled={currentYear === today.getFullYear() && currentMonth >= today.getMonth()}
+          >
+            次の月
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      
       {/* カレンダーグリッド */}
       <div className="grid grid-cols-7 gap-1">
         {/* 曜日ヘッダー */}
@@ -158,7 +246,13 @@ export function WorkoutCalendar({ workouts, onWorkoutClick }: WorkoutCalendarPro
             let baseStyle = 'h-12 border border-gray-200 flex flex-col items-center justify-center text-xs transition-all relative ';
             
             if (!day.isCurrentMonth) {
-              return baseStyle + 'bg-gray-50 text-gray-400 cursor-default';
+              if (day.hasWorkout) {
+                const clickableStyle = onMonthChange ? 'cursor-pointer hover:bg-green-200 ' : 'cursor-default ';
+                return baseStyle + 'bg-green-100 text-green-700 ' + clickableStyle;
+              } else {
+                const clickableStyle = onMonthChange ? 'cursor-pointer hover:bg-gray-100 ' : 'cursor-default ';
+                return baseStyle + 'bg-gray-50 text-gray-400 ' + clickableStyle;
+              }
             }
             
             if (day.hasWorkout) {
